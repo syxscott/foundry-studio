@@ -41,6 +41,10 @@ export const zh = {
     },
     externalTitle: "外部 Agent 接入",
     externalHint: "外部 LLM 可程序化提交任务，无需经过本界面：",
+    thinking: "思考中",
+    llmOff: "未连接第三方 LLM（启发式解析）",
+    llmOk: "已连接 {{name}}",
+    llmNoKey: "{{name}}：未配置密钥",
   },
   models: {
     rfd3: {
@@ -430,6 +434,7 @@ export const zh = {
     "error.engine_unavailable": "模型 {{model}} 的真实引擎不可用：{{detail}}",
     "error.simulation_disabled": "模拟模式已被禁用，且真实引擎不可用。",
     "error.cancel_failed": "任务 {{job_id}} 已结束，无法取消",
+    "error.cancel_draft": "草稿状态的任务不能取消，请直接删除。",
     "error.file_not_found": "文件不存在：{{path}}",
     "error.upload_failed": "文件上传失败：{{detail}}",
     "error.invalid_file_type": "不允许的文件类型：{{filename}}（允许：{{allowed}}）",
@@ -438,6 +443,8 @@ export const zh = {
     "error.checkpoint_install_failed": "权重 {{name}} 安装失败：{{detail}}",
     "error.cleanup_failed": "清理失败：{{detail}}",
     "error.engine_failed": "任务执行失败：{{detail}}",
+    "error.fetch_outputs_failed": "任务已完成，但下载结果文件失败：{{detail}}",
+    "error.agent_planner_stream": "Agent 流式规划失败：{{detail}}",
   },
 };
 

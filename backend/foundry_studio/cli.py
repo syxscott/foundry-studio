@@ -17,11 +17,6 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--host", default=None, help="Bind host (overrides settings)")
     serve.add_argument("--port", type=int, default=None, help="Bind port (overrides settings)")
 
-    worker = sub.add_parser("worker", help="Run a single model worker process")
-    worker.add_argument(
-        "--model", required=True, choices=["rfd3", "rfd3na", "rf3", "mpnn"]
-    )
-
     install = sub.add_parser("install-checkpoints", help="Install model checkpoints")
     install.add_argument("models", nargs="+", help="e.g. rfd3 rf3 proteinmpnn")
 
@@ -38,11 +33,6 @@ def main(argv: list[str] | None = None) -> int:
 
         print(__version__)
         return 0
-
-    if args.command == "worker":
-        from foundry_studio.workers.worker import run_worker
-
-        return run_worker(args.model)
 
     if args.command == "install-checkpoints":
         from foundry_studio.engines.checkpoints import install_checkpoint

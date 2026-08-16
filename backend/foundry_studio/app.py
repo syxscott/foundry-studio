@@ -41,10 +41,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(app)
 
-    # CORS: allow the Vite dev server during development.
+    # CORS: explicit allow-list driven by ``cors_allowed_origins``.
+    # When the list is empty (the default) we still allow the loopback
+    # Vite dev server so local development works without extra config.
+    # Production deployments should set ``cors_allowed_origins`` to the
+    # exact origin(s) they serve from.
+    if settings.cors_allowed_origins:
+        cors_origins = list(settings.cors_allowed_origins)
+    else:
+        cors_origins = [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            f"http://127.0.0.1:{settings.port}",
+            f"http://localhost:{settings.port}",
+        ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],

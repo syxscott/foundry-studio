@@ -15,7 +15,6 @@ if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 
 os.environ.setdefault("FOUNDRY_STUDIO_ENGINE_MODE", "simulation")
-os.environ.setdefault("FOUNDRY_STUDIO_WORKER_AUTOSTART", "false")
 
 
 @pytest.fixture()
@@ -26,7 +25,6 @@ def settings(tmp_path: Path):
     return Settings(
         data_dir=tmp_path / "data",
         engine_mode="simulation",
-        worker_autostart=False,
         allow_simulation_fallback=True,
     )
 

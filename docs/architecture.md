@@ -14,19 +14,16 @@ level useful for contributors.
 ┌───────────────────────────────▼────────────────────────────────────┐
 │  FastAPI (backend/foundry_studio)                                  │
 │  api/        REST routes (jobs, models, checkpoints, files, i18n)  │
-│  db.py       SQLite (WAL) — jobs + worker heartbeats               │
-│  engines/    model registry + real/simulation engines              │
-│  workers/    WorkerManager (spawn/monitor)                         │
-└───────────────┬────────────────────────────────┬───────────────────┘
-                │ subprocess                     │ heartbeats / status
-┌───────────────▼────────────────┐   ┌───────────▼───────────────────┐
-│  worker processes              │   │ data dir                      │
-│  python -m foundry_studio.     │   │ jobs/<id>/  inputs+outputs     │
-│     workers.worker --model X   │   │ logs/<id>.log                 │
-│  (one per model, model loaded  │   │ studio.db                    │
-│   once, reuse via initialize/  │   └───────────────────────────────┘
-│   run separation)              │
-└────────────────────────────────┘
+│  db.py       SQLite (WAL) — jobs                                   │
+│  engines/    model registry + real/simulation engines + runner     │
+│  hpc/        JobOrchestrator + Backend (local / slurm / pbs / lsf)│
+└───────────────┬────────────────────────────────────────────────────┘
+                │ subprocess per job (one-shot)
+┌───────────────▼────────────────────────────────────────────────────┐
+│  python -m foundry_studio.hpc._local_runner <job_id> <data_dir>    │
+│  → resolve_engine → engines.runner.run_one → update DB terminal   │
+│  Outputs land in data/jobs/<id>/, logs in data/logs/<id>.log       │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Data model
@@ -67,19 +64,27 @@ The simulation engine is **never** presented as a real prediction: jobs it
 runs are tagged `engine_mode="simulation"` and the UI shows a persistent
 amber banner.
 
-## Worker lifecycle
+## Job lifecycle
 
-1. `WorkerManager.start()` (API startup): requeue stale `running` jobs, then
-   spawn one worker per model when `worker_autostart=true`.
-2. Each worker process (`workers/worker.py`) resolves its engine once,
-   calls `initialize()`, then loops: `claim_next_job(model)` → `run()` →
-   update DB to terminal state → heartbeat every poll interval.
-3. `_monitor_loop` (15 s tick) respawns dead workers only when queued jobs
-   remain; `workers` table reflects liveness for the UI.
+1. `JobOrchestrator.submit()` builds a `JobSpec` from the DB row, hands it
+   to the configured `Backend` (local for now; slurm/pbs/lsf placeholders
+   for cluster).
+2. `LocalBackend` spawns one `python -m foundry_studio.hpc._local_runner`
+   subprocess per job. The subprocess:
+   - sets `status='running'` (so the UI never sits on a stale `queued`),
+   - resolves the engine (real or labelled simulation),
+   - delegates the actual `engine.run(job)` call to
+     `foundry_studio.engines.runner.run_one` (the same function the
+     in-process test path uses — there is exactly one engine-call site),
+   - updates the DB to a terminal state.
+3. `JobOrchestrator._poll_loop` (3 s tick) reads `status()` + `progress()`
+   from the active backend, transitions to `succeeded` / `failed` /
+   `canceled`, and calls `_finalize` to fetch outputs from the workdir
+   into the canonical `data/jobs/<id>/` location.
 
 Cooperative cancellation: `POST /api/jobs/{id}/cancel` sets
 `cancel_requested`; queued jobs are canceled immediately, running jobs are
-aborted by the engine between work units (worker checks the flag).
+aborted by the engine between work units (runner checks the flag).
 
 ## API surface (prefix /api)
 

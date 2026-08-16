@@ -66,9 +66,10 @@ def test_create_draft_then_submit_and_run(client, settings, sample_cif):
     assert sub.status_code == 200, sub.text
     assert sub.json()["status"] == "queued"
 
-    # Execute the job inline using the worker's engine path.
+    # Execute the job inline using the shared engine runner (same code path
+    # the production subprocess uses — see :mod:`foundry_studio.hpc._local_runner`).
     from foundry_studio.db import StudioDB
-    from foundry_studio.workers.worker import _run_one
+    from foundry_studio.engines.runner import run_one as runner_run_one
     from foundry_studio.engines.registry import resolve_engine
 
     db = StudioDB(settings.resolved_data_dir() / "studio.db")
@@ -85,7 +86,7 @@ def test_create_draft_then_submit_and_run(client, settings, sample_cif):
     # Re-claim the queued job.
     job_row = db.claim_next_job("rfd3")
     assert job_row is not None
-    _run_one(
+    runner_run_one(
         db=db,
         settings=settings,
         model="rfd3",

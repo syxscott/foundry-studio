@@ -173,22 +173,46 @@ class SimulationEngine(BaseEngine):
 
 
 def _guess_residues(params: dict[str, Any], model: str) -> int:
-    """Infer a plausible length from parameters for the simulated output."""
+    """Infer a plausible length from parameters for the simulated output.
+
+    RFD3 / RFD3NA contig syntax is richer than ``A1-100/B1-50``:
+    segments can carry chain letters anywhere (``H1-50/A23-200``),
+    a length prefix (``40-60``), a zero-length gap (``/0``), or a
+    percentage token (``10-30/A1-100:0.5``).  We only need a sensible
+    number for a *labelled simulation* — so we extract every integer
+    range we can find, ignore tokens that don't match, and fall back
+    to a model-specific default when nothing parses.
+    """
+    import re
+
     contigs = str(params.get("contigs") or "")
     n_res = 0
-    for part in contigs.split("/"):
-        seg = part.strip()
-        if "-" in seg:
-            try:
-                start, end = seg.split("-")[0][-2:], seg.split("-")[1]
-                # Strip chain letters.
-                digits = "".join(ch for ch in start if ch.isdigit())
-                end_digits = "".join(ch for ch in end if ch.isdigit())
-                n_res += max(1, (int(end_digits or 1) - int(digits or 1) + 1))
-            except Exception:  # noqa: BLE001
-                n_res += 40
-        elif part:
-            n_res += 40
+    # Match `<digits>-<digits>` (with optional chain letters) and use
+    # the smaller of the two ends as the segment length proxy.  This is
+    # deliberately permissive: a real run will compute exact lengths.
+    range_re = re.compile(r"(\d+)\s*-\s*(\d+)")
+    for m in range_re.finditer(contigs):
+        try:
+            a, b = int(m.group(1)), int(m.group(2))
+        except ValueError:
+            continue
+        lo, hi = sorted((a, b))
+        if hi <= 0:
+            continue
+        # Cap each segment contribution so a single huge range can't
+        # blow the total past the final clamp.
+        n_res += min(max(hi - lo + 1, 1), 400)
     if n_res == 0:
-        n_res = {"rfd3": 100, "rfd3na": 100, "rf3": 150, "mpnn": 100}.get(model, 100)
+        # No recognizable range — try to take a single integer (length
+        # form like "100-100" or "80") from the string.
+        single = re.search(r"\b(\d{2,4})\b", contigs)
+        if single:
+            try:
+                n_res = int(single.group(1))
+            except ValueError:
+                pass
+    if n_res == 0:
+        n_res = {"rfd3": 100, "rfd3na": 100, "rf3": 150, "mpnn": 100}.get(
+            model, 100
+        )
     return min(max(int(n_res), 20), 800)

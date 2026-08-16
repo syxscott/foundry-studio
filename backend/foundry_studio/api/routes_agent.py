@@ -1,18 +1,22 @@
 """Agent API: natural-language planning + one-shot job submission.
 
 Two audiences share these endpoints:
-- *In-app chat agent*: ``POST /chat`` turns a free-text instruction into a
-  transparent JobSpec draft the user confirms in the UI.
+- *In-app chat agent*: ``POST /chat`` streams tokens in real time (Server-Sent
+  Events) and ends with a transparent JobSpec draft the user confirms in the UI.
 - *External LLM agents*: ``POST /run`` creates and submits a job in a single call
   (the Control API surface), and ``GET /capabilities`` exposes the model catalog
-  + active backend so an external agent can discover what is runnable.
+  + the configured LLM provider(s) so an external agent can discover what is
+  runnable.
 """
 
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from foundry_studio import __version__
@@ -23,6 +27,7 @@ from foundry_studio.config import Settings
 from foundry_studio.db import StudioDB
 from foundry_studio.engines import models as model_catalog
 from foundry_studio.joblifecycle import JobOrchestrator
+from foundry_studio.llm.registry import build_registry
 from foundry_studio.schemas import JobRead
 
 router = APIRouter()
@@ -49,6 +54,50 @@ class RunRequest(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# SSE helpers
+# --------------------------------------------------------------------------- #
+def _sse(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def _chat_sse(planner: Planner, text: str) -> AsyncIterator[str]:
+    """Translate planner stream events into an SSE byte stream.
+
+    Errors are emitted as ``event: error`` with both a localized
+    ``message`` (server-side fallback) and a stable ``i18nErrorKey`` +
+    ``errorArgs`` pair so the frontend can render from its own
+    catalog without re-implementing the message key contract used by
+    the rest of the API.
+    """
+    try:
+        async for ev in planner.plan_stream(text):
+            kind = ev.get("type")
+            if kind == "token":
+                yield _sse("token", {"text": ev.get("text", "")})
+            elif kind == "plan":
+                yield _sse("plan", ev.get("plan", {}))
+            elif kind == "error":
+                yield _sse(
+                    "error",
+                    {
+                        "message": ev.get("message", "error"),
+                        "i18nErrorKey": "error.agent_planner_stream",
+                        "errorArgs": {},
+                    },
+                )
+    except Exception as exc:  # noqa: BLE001
+        yield _sse(
+            "error",
+            {
+                "message": str(exc),
+                "i18nErrorKey": "error.agent_planner_stream",
+                "errorArgs": {"detail": str(exc)},
+            },
+        )
+    yield _sse("done", {})
+
+
+# --------------------------------------------------------------------------- #
 # Endpoints
 # --------------------------------------------------------------------------- #
 @router.get("/capabilities")
@@ -56,10 +105,11 @@ def capabilities(
     settings: Settings = Depends(get_settings),
     manager: JobOrchestrator = Depends(get_manager),
 ) -> dict[str, Any]:
-    """What an external agent can run: model catalog + active backend."""
+    """What an external agent can run: model catalog + active backend + LLM providers."""
     return {
         "version": __version__,
         "backend": manager.backend_info(),
+        "providers": build_registry(settings).summaries(),
         "models": [
             {
                 "id": m["id"],
@@ -74,29 +124,21 @@ def capabilities(
 
 
 @router.post("/chat")
-def chat(
+async def chat(
     payload: ChatRequest,
     settings: Settings = Depends(get_settings),
-) -> dict[str, Any]:
-    """Turn a natural-language instruction into a JobSpec draft (for confirmation)."""
-    planner = Planner(
-        llm_url=settings.agent_llm_url,
-        llm_model=settings.agent_llm_model,
-        llm_token=settings.agent_llm_token,
+) -> StreamingResponse:
+    """Stream an NL instruction as tokens, ending with a JobSpec draft (SSE)."""
+    planner = Planner(settings=settings)
+    return StreamingResponse(
+        _chat_sse(planner, payload.message),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-    try:
-        plan = planner.plan(payload.message)
-    except ValueError as exc:
-        raise ApiError(
-            "error.agent_cannot_parse",
-            status_code=422,
-            params={"detail": str(exc)},
-        ) from exc
-    return plan.to_dict()
 
 
 @router.post("/run", response_model=JobRead, status_code=201)
-def run(
+async def run(
     payload: RunRequest,
     settings: Settings = Depends(get_settings),
     db: StudioDB = Depends(get_db),
@@ -110,13 +152,9 @@ def run(
 
     # If only free text was given, let the planner resolve model + params.
     if model is None and payload.message:
-        planner = Planner(
-            llm_url=settings.agent_llm_url,
-            llm_model=settings.agent_llm_model,
-            llm_token=settings.agent_llm_token,
-        )
+        planner = Planner(settings=settings)
         try:
-            plan = planner.plan(payload.message)
+            plan = await planner.resolve(payload.message)
         except ValueError as exc:
             raise ApiError(
                 "error.agent_cannot_parse",

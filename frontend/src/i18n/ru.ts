@@ -43,6 +43,10 @@ export const ru: TranslationKey = {
     },
     externalTitle: "Доступ для внешнего Agent",
     externalHint: "Внешний LLM может отправлять задания программно, минуя этот интерфейс:",
+    thinking: "Анализирую",
+    llmOff: "Внешний LLM не подключён (эвристический разбор)",
+    llmOk: "Подключено: {{name}}",
+    llmNoKey: "{{name}}: ключ API не задан",
   },
   models: {
     rfd3: {
@@ -433,6 +437,7 @@ export const ru: TranslationKey = {
     "error.engine_unavailable": "Реальный движок для {{model}} недоступен: {{detail}}",
     "error.simulation_disabled": "Режим симуляции отключен, а реальный движок недоступен.",
     "error.cancel_failed": "Задача {{job_id}} уже завершена и не может быть отменена",
+    "error.cancel_draft": "Черновик задачи нельзя отменить; используйте DELETE.",
     "error.file_not_found": "Файл не существует: {{path}}",
     "error.upload_failed": "Не удалось загрузить файл: {{detail}}",
     "error.invalid_file_type": "Недопустимый тип файла: {{filename}} (разрешено: {{allowed}})",
@@ -441,5 +446,7 @@ export const ru: TranslationKey = {
     "error.checkpoint_install_failed": "Не удалось установить веса {{name}}: {{detail}}",
     "error.cleanup_failed": "Не удалось выполнить очистку: {{detail}}",
     "error.engine_failed": "Не удалось выполнить задание: {{detail}}",
+    "error.fetch_outputs_failed": "Задача завершена, но не удалось получить файлы результатов: {{detail}}",
+    "error.agent_planner_stream": "Не удалось получить поток планирования агента: {{detail}}",
   },
 };

@@ -21,14 +21,20 @@ from __future__ import annotations
 import json
 import logging
 import threading
-import time
-from pathlib import Path
 from typing import Any
 
 from foundry_studio.config import Settings
 from foundry_studio.db import StudioDB
 from foundry_studio.engines import models as model_catalog
-from foundry_studio.hpc.base import Backend, HPCNotConfigured, RemoteHandle, STATUS_CANCELED, STATUS_FAILED, STATUS_PENDING, STATUS_RUNNING, STATUS_SUCCEEDED
+from foundry_studio.hpc.base import (
+    STATUS_CANCELED,
+    STATUS_FAILED,
+    STATUS_PENDING,
+    STATUS_SUCCEEDED,
+    Backend,
+    HPCNotConfigured,
+    RemoteHandle,
+)
 from foundry_studio.hpc.job_spec import JobSpec, build_spec
 
 logger = logging.getLogger("foundry_studio.orchestrator")
@@ -239,13 +245,17 @@ class JobOrchestrator:
             with self._lock:
                 self._handles[job["id"]] = handle
 
+    # Seconds the orchestrator waits between status polls. Constant for now;
+    # if user-tunable behaviour is ever needed, lift this to Settings.
+    POLL_INTERVAL_SECONDS: float = 3.0
+
     def _loop(self) -> None:
         while not self._stop.is_set():
             try:
                 self._poll_once()
             except Exception:  # noqa: BLE001
                 logger.exception("poll error")
-            self._stop.wait(self.settings.worker_poll_interval)
+            self._stop.wait(self.POLL_INTERVAL_SECONDS)
 
     def _poll_once(self) -> None:
         with self._lock:
@@ -253,7 +263,7 @@ class JobOrchestrator:
         for job_id, handle in handles.items():
             try:
                 status, progress = self._make_backend_for_handle(handle).status(handle)
-            except Exception as exc:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 logger.exception("status check failed for %s", job_id)
                 continue
             if progress is not None:
@@ -265,12 +275,36 @@ class JobOrchestrator:
 
     def _finalize(self, job_id: str, handle: RemoteHandle, status: str) -> None:
         dest = self.settings.resolved_data_dir() / "jobs" / job_id
+        fetch_failed = False
         try:
             self._make_backend_for_handle(handle).fetch_outputs(handle, dest)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            fetch_failed = True
             logger.exception("fetch outputs failed for %s", job_id)
+            self.db.update_job(
+                job_id,
+                error_code="error.fetch_outputs_failed",
+                error_detail=f"{type(exc).__name__}: {exc}",
+            )
         if status == STATUS_SUCCEEDED:
-            self.db.update_job(job_id, status=STATUS_SUCCEEDED, progress=100, outputs_dir=str(dest))
+            # When the fetch failed we still record the (possibly empty)
+            # outputs directory so the UI can surface the issue, but we
+            # downgrade the job to FAILED instead of falsely reporting
+            # SUCCEEDED for a job whose artifacts are missing.
+            if fetch_failed:
+                self.db.update_job(
+                    job_id,
+                    status=STATUS_FAILED,
+                    progress=100,
+                    outputs_dir=str(dest),
+                )
+            else:
+                self.db.update_job(
+                    job_id,
+                    status=STATUS_SUCCEEDED,
+                    progress=100,
+                    outputs_dir=str(dest),
+                )
         elif status == STATUS_CANCELED:
             self.db.update_job(job_id, status=STATUS_CANCELED)
         else:

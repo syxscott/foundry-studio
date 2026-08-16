@@ -2,7 +2,7 @@
 
 import type {
   AgentCapabilities,
-  AgentChatResponse,
+  AgentPlan,
   AgentRunPayload,
   ApiErrorBody,
   CheckpointInfo,
@@ -112,11 +112,99 @@ export const api = {
   // --- Agent surface (Control API) -------------------------------------------
   agentCapabilities: () => request<AgentCapabilities>("/agent/capabilities"),
 
-  agentChat: (message: string, lang: string) =>
-    request<AgentChatResponse>("/agent/chat", {
+  /**
+   * Stream the agent chat endpoint (Server-Sent Events). Token deltas arrive via
+   * `onToken`; the final structured plan via `onPlan`. Falls back gracefully: if
+   * the LLM is unavailable the server still emits a single `plan` event (heuristic).
+   * Errors carry an `i18nErrorKey` + `errorArgs` payload (when the server
+   * provides one) so the UI can render the localized string from its own
+   * catalog without parsing the human-readable `message`.
+   */
+  streamAgentChat: (
+    message: string,
+    lang: string,
+    handlers: {
+      onToken?: (text: string) => void;
+      onPlan?: (plan: AgentPlan) => void;
+      onDone?: () => void;
+      onError?: (
+        message: string,
+        meta?: { i18nErrorKey?: string; errorArgs?: Record<string, unknown> },
+      ) => void;
+      signal?: AbortSignal;
+    },
+  ): void => {
+    fetch(`${BASE}/agent/chat`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, lang }),
-    }),
+      signal: handlers.signal,
+    })
+      .then((res) => {
+        if (!res.ok) {
+          res
+            .json()
+            .then((body) =>
+              handlers.onError?.(
+                (body && (body.message || body.message_key)) ||
+                  `HTTP ${res.status}`,
+                body && (body.i18nErrorKey || body.message_key)
+                  ? {
+                      i18nErrorKey: body.i18nErrorKey || body.message_key,
+                      errorArgs: body.errorArgs || body.params,
+                    }
+                  : undefined,
+              ),
+            )
+            .catch(() => handlers.onError?.(`HTTP ${res.status}`));
+          return;
+        }
+        if (!res.body) {
+          handlers.onError?.("No response stream");
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        const pump = (): Promise<void> =>
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              handlers.onDone?.();
+              return;
+            }
+            buf += decoder.decode(value, { stream: true });
+            let idx: number;
+            while ((idx = buf.indexOf("\n\n")) >= 0) {
+              const frame = buf.slice(0, idx);
+              buf = buf.slice(idx + 2);
+              const ev = parseSSEFrame(frame);
+              if (!ev) continue;
+              if (ev.event === "token" && ev.data && typeof ev.data.text === "string")
+                handlers.onToken?.(ev.data.text);
+              else if (ev.event === "plan" && ev.data) handlers.onPlan?.(ev.data as AgentPlan);
+              else if (ev.event === "error")
+                handlers.onError?.(
+                  (ev.data && (ev.data.message as string)) || "error",
+                  ev.data && (ev.data.i18nErrorKey || ev.data.message_key)
+                    ? {
+                        i18nErrorKey:
+                          (ev.data.i18nErrorKey as string) ||
+                          (ev.data.message_key as string),
+                        errorArgs: (ev.data.errorArgs as Record<string, unknown>) ||
+                          (ev.data.params as Record<string, unknown>),
+                      }
+                    : undefined,
+                );
+            }
+            return pump();
+          });
+        return pump();
+      })
+      .catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        handlers.onError?.(String(e));
+      });
+  },
 
   agentRun: (payload: AgentRunPayload) =>
     request<Job>("/agent/run", {
@@ -124,3 +212,33 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 };
+
+/** Parse one SSE frame (`event:` / `data:` lines) into {event, data}. */
+function parseSSEFrame(
+  frame: string,
+): {
+  event: string;
+  data:
+    | {
+        text?: string;
+        message?: string;
+        i18nErrorKey?: string;
+        message_key?: string;
+        errorArgs?: Record<string, unknown>;
+        params?: Record<string, unknown>;
+      }
+    | null;
+} | null {
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of frame.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+  }
+  if (dataLines.length === 0) return null;
+  try {
+    return { event, data: JSON.parse(dataLines.join("")) };
+  } catch {
+    return { event, data: null };
+  }
+}

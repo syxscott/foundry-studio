@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiClientError } from "../api";
-import type { AgentChatResponse } from "../types/api";
+import type { AgentPlan, LlmProviderStatus } from "../types/api";
 
 const EXAMPLES = [
   "用 RFD3 设计一个 80 残基的 binder，针对 hotspot A12/B34，采样 5 个",
@@ -23,25 +23,72 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
 export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: string) => void }) {
   const { t, i18n } = useTranslation();
   const [text, setText] = useState("");
-  const [parsing, setParsing] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [thinking, setThinking] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [plan, setPlan] = useState<AgentChatResponse | null>(null);
+  const [plan, setPlan] = useState<AgentPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [errorArgs, setErrorArgs] = useState<Record<string, unknown> | null>(null);
+  const [providers, setProviders] = useState<LlmProviderStatus[] | null>(null);
 
-  const parse = async () => {
-    if (!text.trim()) return;
-    setParsing(true);
-    setError(null);
-    setPlan(null);
-    try {
-      const res = await api.agentChat(text.trim(), i18n.language);
-      setPlan(res);
-    } catch (e) {
-      if (e instanceof ApiClientError) setError(e.body.message);
-      else setError(String(e));
-    } finally {
-      setParsing(false);
+  // Surface which third-party LLM provider is wired up (or that we're heuristic-only).
+  useEffect(() => {
+    let active = true;
+    api
+      .agentCapabilities()
+      .then((cap) => {
+        if (active) setProviders(cap.providers ?? []);
+      })
+      .catch(() => {
+        if (active) setProviders([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Translate a stream error into a localized display string.  Prefer the
+  // server-provided i18n key (so the user sees the same wording the rest
+  // of the API uses); fall back to the server's already-localized `message`
+  // and finally to the raw string.
+  const renderError = (): string => {
+    if (errorKey) {
+      const template = t(`errors.${errorKey}` as never, errorArgs ?? {});
+      if (template && template !== `errors.${errorKey}`) return template as string;
     }
+    return error ?? "";
+  };
+
+  const parse = () => {
+    if (!text.trim() || streaming) return;
+    setStreaming(true);
+    setThinking("");
+    setError(null);
+    setErrorKey(null);
+    setErrorArgs(null);
+    setPlan(null);
+    api.streamAgentChat(text.trim(), i18n.language, {
+      onToken: (chunk) => setThinking((prev) => prev + chunk),
+      onPlan: (p) => {
+        setPlan(p);
+        setStreaming(false);
+      },
+      onError: (msg, meta) => {
+        setError(msg);
+        setErrorKey(meta?.i18nErrorKey ?? null);
+        setErrorArgs(meta?.errorArgs ?? null);
+        setStreaming(false);
+      },
+      onDone: () => setStreaming(false),
+    });
+  };
+
+  // Re-run the planner with the same text. Distinct from `parse` only in
+  // that it doesn't require the user to scroll back to the textarea — the
+  // error block surfaces a "Retry" button.
+  const retry = () => {
+    void parse();
   };
 
   const submit = async () => {
@@ -86,6 +133,33 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
       </div>
       <p className="text-xs text-slate-500 mb-3">{t("agent.subtitle")}</p>
 
+      {/* Third-party LLM provider status (visible "API connected" signal). */}
+      {providers && (
+        <div className="mb-3 text-[11px] flex flex-wrap items-center gap-1.5">
+          {providers.length === 0 ? (
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+              {t("agent.llmOff")}
+            </span>
+          ) : (
+            providers.map((p) => (
+              <span
+                key={p.name}
+                className={`px-2 py-0.5 rounded-full font-medium ${
+                  p.key_present
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+                title={p.base_url}
+              >
+                {p.key_present
+                  ? t("agent.llmOk", { name: p.name })
+                  : t("agent.llmNoKey", { name: p.name })}
+              </span>
+            ))
+          )}
+        </div>
+      )}
+
       <textarea
         className="input h-24 resize-none"
         placeholder={t("agent.inputPlaceholder")}
@@ -109,23 +183,48 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
         <button
           className="btn-primary"
           onClick={() => void parse()}
-          disabled={parsing || !text.trim()}
+          disabled={streaming || !text.trim()}
         >
-          {parsing ? t("agent.parsing") : t("agent.parse")}
+          {streaming ? t("agent.thinking") : t("agent.parse")}
         </button>
         {plan && (
-          <button
-            className="btn-soft"
-            onClick={() => setPlan(null)}
-          >
+          <button className="btn-soft" onClick={() => setPlan(null)}>
             {t("agent.clear")}
           </button>
         )}
       </div>
 
       {error && (
-        <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
-          {error}
+        <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2 flex items-start justify-between gap-2">
+          <span className="flex-1">{renderError()}</span>
+          {!streaming && (
+            <button
+              type="button"
+              className="text-[11px] font-medium text-red-700 hover:text-red-800 underline shrink-0"
+              onClick={retry}
+            >
+              {t("common.retry")}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Live "thinking" stream from the LLM. */}
+      {!plan && (streaming || thinking) && (
+        <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/40 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" style={{ animationDelay: "150ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" style={{ animationDelay: "300ms" }} />
+            </span>
+            <span className="text-xs uppercase tracking-wide text-brand-600 font-semibold">
+              {t("agent.thinking")}
+            </span>
+          </div>
+          <pre className="text-sm text-slate-700 whitespace-pre-wrap break-words font-mono leading-relaxed">
+            {thinking || "…"}
+          </pre>
         </div>
       )}
 

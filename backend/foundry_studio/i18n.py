@@ -65,6 +65,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ja": "ジョブ {job_id} は終了しており、キャンセルできません",
         "ru": "Задача {job_id} уже завершена и не может быть отменена",
     },
+    "error.cancel_draft": {
+        "zh": "草稿状态的任务不能取消，请直接删除。",
+        "en": "A draft job cannot be canceled; use DELETE to remove it instead.",
+        "ja": "ドラフト状態のジョブはキャンセルできません。削除してください。",
+        "ru": "Черновик задачи нельзя отменить; используйте DELETE.",
+    },
     "error.file_not_found": {
         "zh": "文件不存在：{path}",
         "en": "File does not exist: {path}",
@@ -136,6 +142,18 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "Remote job failed; see logs for details.",
         "ja": "リモートジョブが失敗しました。詳細はログを確認してください。",
         "ru": "Удалённая задача завершилась с ошибкой; подробности в журнале.",
+    },
+    "error.fetch_outputs_failed": {
+        "zh": "任务已完成，但下载结果文件失败：{detail}",
+        "en": "Job finished, but fetching the result files failed: {detail}",
+        "ja": "ジョブは完了しましたが、結果ファイルの取得に失敗しました: {detail}",
+        "ru": "Задача завершена, но не удалось получить файлы результатов: {detail}",
+    },
+    "error.agent_planner_stream": {
+        "zh": "Agent 流式规划失败：{detail}",
+        "en": "Agent planning stream failed: {detail}",
+        "ja": "エージェントの計画ストリームが失敗しました: {detail}",
+        "ru": "Не удалось получить поток планирования агента: {detail}",
     },
     "error.agent_cannot_parse": {
         "zh": "无法从指令中解析出可执行计划：{detail}",

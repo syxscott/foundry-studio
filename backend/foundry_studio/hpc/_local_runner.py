@@ -16,13 +16,12 @@ from __future__ import annotations
 
 import logging
 import sys
-import time
 from pathlib import Path
 
-from foundry_studio.config import Settings, get_settings
+from foundry_studio.config import get_settings
 from foundry_studio.db import StudioDB
-from foundry_studio.engines.base import tail_text
 from foundry_studio.engines.registry import resolve_engine
+from foundry_studio.engines.runner import run_one
 
 logger = logging.getLogger("foundry_studio.local_runner")
 
@@ -40,13 +39,17 @@ def run_job(job_id: str, data_dir: Path, *, allow_simulation: bool = True) -> in
         logger.error("job %s not found", job_id)
         return 2
 
-    db.update_job(job_id, log_path=str(log_path))
+    # Mark the job as running BEFORE the heavy work so the UI doesn't show
+    # a stale "queued" status for the entire duration of the run.
+    db.update_job(job_id, log_path=str(log_path), status="running")
     if job.get("cancel_requested"):
         db.update_job(job_id, status="canceled")
         return 0
 
+    # Engine resolution is local to the runner subprocess so a missing /
+    # un-importable real engine only kills the job, not the API server.
     try:
-        engine, effective_mode, _is_sim = resolve_engine(
+        engine, _effective_mode, _is_sim = resolve_engine(
             job["model"],
             engine_mode=job.get("engine_mode") or "auto",
             allow_simulation=allow_simulation,
@@ -65,40 +68,21 @@ def run_job(job_id: str, data_dir: Path, *, allow_simulation: bool = True) -> in
         )
         return 1
 
-    try:
-        result = engine.run(job)
-        outputs_dir = str(workdir / job_id)
-        # Collect any outputs the engine wrote into its job dir.
-        from foundry_studio.engines.base import OutputFile
-
-        produced: list[OutputFile] = result.outputs or []
-        if not produced:
-            produced = engine.collect_outputs(Path(outputs_dir))
-        db.update_job(
-            job_id,
-            status="succeeded",
-            progress=100,
-            outputs_dir=outputs_dir,
-        )
-        with open(log_path, "a", encoding="utf-8") as fh:
-            fh.write(
-                f"[local_runner] done model={job['model']} engine={effective_mode} "
-                f"outputs={len(produced)}\n"
-            )
-        return 0
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Job %s failed", job_id)
-        db.update_job(
-            job_id,
-            status="failed",
-            error_code="error.engine_failed",
-            error_detail=f"{type(exc).__name__}: {exc}",
-        )
-        tail = tail_text(log_path)
-        if tail:
-            with open(log_path, "a", encoding="utf-8") as fh:
-                fh.write(f"[local_runner] FAILED: {exc}\n")
-        return 1
+    # Delegate the actual engine invocation to the shared runner so the
+    # in-process test path and the subprocess production path stay
+    # byte-for-byte identical.
+    run_one(
+        db=db,
+        settings=get_settings(),
+        model=job["model"],
+        engine=engine,
+        job=job,
+        data_dir=data_dir,
+    )
+    # Mirror the old behaviour: tail the run state from the DB instead of
+    # trying to interpret the engine result here.
+    final = db.get_job(job_id)
+    return 0 if final and final.get("status") == "succeeded" else 1
 
 
 def main(argv: list[str] | None = None) -> int:

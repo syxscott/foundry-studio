@@ -311,7 +311,16 @@ class StudioDB:
         return self.get_job(job_id)  # type: ignore[return-value]
 
     def submit_job(self, job_id: str) -> dict[str, Any] | None:
-        """Move a draft job into the queue."""
+        """DB-level primitive: move a ``draft`` job into the queue.
+
+        Note: production HTTP submission goes through
+        :meth:`foundry_studio.joblifecycle.JobOrchestrator.submit` which
+        performs the same state transition as part of building the
+        ``JobSpec`` and dispatching to the active backend. This primitive
+        is kept as a tested, in-process API (used by the unit tests and
+        any future bulk-submit code paths) so the draft → queued
+        transition lives in exactly one place.
+        """
         with self.tx() as conn:
             row = conn.execute(
                 "SELECT * FROM jobs WHERE id = ? AND status = ?",

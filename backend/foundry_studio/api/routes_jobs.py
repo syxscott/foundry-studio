@@ -259,6 +259,16 @@ def cancel_job(
             status_code=409,
             params={"job_id": job_id},
         )
+    if job["status"] == "draft":
+        # A draft has no running resources and no scheduler submission yet,
+        # so "cancel" is just "delete the draft" — the dedicated DELETE
+        # endpoint is the right semantic.  Returning 409 here prevents
+        # double-handling and makes the lifecycle of a draft explicit.
+        raise ApiError(
+            "error.cancel_draft",
+            status_code=409,
+            params={"job_id": job_id},
+        )
     # Orchestrator cancels both the local process and any remote scheduler job.
     manager.cancel(job_id)
     updated = db.get_job(job_id)

@@ -58,10 +58,6 @@ class Settings(BaseSettings):
     # path (same semantics as FOUNDRY_CHECKPOINT_DIRS).
     checkpoint_dirs: str = ""
 
-    # --- Worker ----------------------------------------------------------------------
-    # Seconds the orchestrator waits between status polls.
-    worker_poll_interval: float = 3.0
-
     # --- HPC execution ---------------------------------------------------------------
     # Which backend executes jobs. "local" runs engines on this machine (mock HPC,
     # requires no cluster). "slurm" / "pbs" / "lsf" submit to a real scheduler via
@@ -97,16 +93,38 @@ class Settings(BaseSettings):
     # --- Agent -----------------------------------------------------------------------
     # Enable the in-app conversational agent + external Control API.
     agent_enabled: bool = True
-    # When set, the agent planner calls this LLM endpoint; otherwise it falls back
-    # to a deterministic heuristic parser (no external dependency, no fake calls).
-    agent_llm_url: str = ""
-    agent_llm_model: str = ""
-    agent_llm_token: str = ""
+
+    # --- Agent LLM provider (third-party API, OpenAI-compatible) --------------------
+    # When `agent_llm_provider` is empty the planner falls back to the deterministic
+    # heuristic parser (zero external dependencies). When set, it names an
+    # OpenAI-compatible provider (OpenAI, DeepSeek, vLLM, OpenRouter, Ollama's /v1
+    # endpoint, …) reached through `agent_llm_base_url`.
+    #
+    # The API key is NEVER stored in config — only the *environment-variable name*
+    # (a credential-ref) is, and it is resolved on each request. For keyless local
+    # endpoints (e.g. Ollama) leave `agent_llm_api_key_env` empty.
+    agent_llm_provider: str = "openai"
+    agent_llm_base_url: str = "https://api.openai.com/v1"
+    agent_llm_api_key_env: str = "OPENAI_API_KEY"
+    agent_llm_model: str = "gpt-4o-mini"
+    agent_llm_models: list[str] = []
+    agent_llm_retry: int = 2
+    # Per-request timeout for the agent's OpenAI-compatible LLM call.
+    # Long reasoning runs and small local models need more than 60 s.
+    agent_llm_timeout: float = 60.0
 
     # --- Security --------------------------------------------------------------------
     # Bind the API only to loopback by default. Set to "0.0.0.0" for LAN access.
     # A reverse proxy (TLS + auth) is strongly recommended before exposing publicly.
     allow_remote_access: bool = False
+
+    # CORS allow-list. An empty list (the default) means the CORS middleware
+    # only accepts requests from the loopback dev server (Vite at 5173 and
+    # the served frontend at 127.0.0.1:<port>).  When deploying behind a
+    # reverse proxy on a LAN, set this to the explicit list of origins
+    # (e.g. "https://studio.lan.example.com") so cross-origin cookies +
+    # credentials stay scoped.  "*" is rejected when credentials are on.
+    cors_allowed_origins: list[str] = []
 
     # --- Frontend ----------------------------------------------------------------------
     # Path to the built frontend (frontend/dist). If the directory does not exist,

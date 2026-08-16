@@ -43,6 +43,10 @@ export const en: TranslationKey = {
     },
     externalTitle: "External agent access",
     externalHint: "An external LLM can submit jobs programmatically, bypassing this UI:",
+    thinking: "Thinking",
+    llmOff: "No third-party LLM connected (heuristic parsing)",
+    llmOk: "Connected: {{name}}",
+    llmNoKey: "{{name}}: API key not set",
   },
   models: {
     rfd3: {
@@ -433,6 +437,7 @@ export const en: TranslationKey = {
     "error.engine_unavailable": "Real engine for {{model}} is unavailable: {{detail}}",
     "error.simulation_disabled": "Simulation mode is disabled and the real engine is unavailable.",
     "error.cancel_failed": "Job {{job_id}} has already finished and cannot be canceled",
+    "error.cancel_draft": "A draft job cannot be canceled; use DELETE to remove it instead.",
     "error.file_not_found": "File does not exist: {{path}}",
     "error.upload_failed": "File upload failed: {{detail}}",
     "error.invalid_file_type": "File type not allowed: {{filename}} (allowed: {{allowed}})",
@@ -441,5 +446,7 @@ export const en: TranslationKey = {
     "error.checkpoint_install_failed": "Failed to install checkpoint {{name}}: {{detail}}",
     "error.cleanup_failed": "Cleanup failed: {{detail}}",
     "error.engine_failed": "Job execution failed: {{detail}}",
+    "error.fetch_outputs_failed": "Job finished, but fetching the result files failed: {{detail}}",
+    "error.agent_planner_stream": "Agent planning stream failed: {{detail}}",
   },
 };

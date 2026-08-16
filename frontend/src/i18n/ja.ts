@@ -43,6 +43,10 @@ export const ja: TranslationKey = {
     },
     externalTitle: "外部 Agent 接続",
     externalHint: "外部 LLM はこの UI を介さずにプログラムからジョブを送信できます：",
+    thinking: "思考中",
+    llmOff: "外部 LLM 未接続（ヒューリスティック解析）",
+    llmOk: "接続済み: {{name}}",
+    llmNoKey: "{{name}}: API キー未設定",
   },
   models: {
     rfd3: {
@@ -433,6 +437,7 @@ export const ja: TranslationKey = {
     "error.engine_unavailable": "モデル {{model}} の実エンジンが利用できません: {{detail}}",
     "error.simulation_disabled": "シミュレーションモードが無効で、実エンジンも利用できません。",
     "error.cancel_failed": "ジョブ {{job_id}} は終了しており、キャンセルできません",
+    "error.cancel_draft": "ドラフト状態のジョブはキャンセルできません。削除してください。",
     "error.file_not_found": "ファイルが存在しません: {{path}}",
     "error.upload_failed": "ファイルのアップロードに失敗しました: {{detail}}",
     "error.invalid_file_type": "許可されていないファイルタイプです: {{filename}}（許可: {{allowed}}）",
@@ -441,5 +446,7 @@ export const ja: TranslationKey = {
     "error.checkpoint_install_failed": "重み {{name}} のインストールに失敗しました: {{detail}}",
     "error.cleanup_failed": "クリーンアップに失敗しました: {{detail}}",
     "error.engine_failed": "ジョブの実行に失敗しました: {{detail}}",
+    "error.fetch_outputs_failed": "ジョブは完了しましたが、結果ファイルの取得に失敗しました: {{detail}}",
+    "error.agent_planner_stream": "エージェントの計画ストリームが失敗しました: {{detail}}",
   },
 };
