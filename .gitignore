@@ -28,3 +28,4 @@ data/
 Thumbs.db
 *.timestamp-*.mjs
 *.timestamp-*.mjs
+*.tsbuildinfo
