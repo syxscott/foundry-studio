@@ -16,7 +16,14 @@ from pathlib import Path
 from typing import Any
 
 from foundry_studio.db import StudioDB
-from foundry_studio.hpc.base import Backend, RemoteHandle, STATUS_CANCELED, STATUS_FAILED, STATUS_PENDING, STATUS_RUNNING, STATUS_SUCCEEDED
+from foundry_studio.hpc.base import (
+    STATUS_CANCELED,
+    STATUS_FAILED,
+    STATUS_RUNNING,
+    STATUS_SUCCEEDED,
+    Backend,
+    RemoteHandle,
+)
 from foundry_studio.hpc.job_spec import JobSpec
 
 

@@ -68,7 +68,7 @@ export function HomePage({
           <p className="text-sm text-slate-500 mt-1">{t("home.centerSubtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
-          <BackendStatus info={backend} />
+          <BackendStatus info={backend} llm={health?.llm?.providers} />
           <button className="btn-ghost" onClick={() => setShowManual((s) => !s)}>
             {showManual ? t("home.hideManual") : t("home.showManual")}
           </button>

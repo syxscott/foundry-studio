@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import type { BackendInfo } from "../types/api";
+import type { BackendInfo, LlmProviderStatus } from "../types/api";
 
 const BACKEND_LABEL: Record<string, string> = {
   local: "Local",
@@ -9,7 +9,13 @@ const BACKEND_LABEL: Record<string, string> = {
   lsf: "LSF",
 };
 
-export default function BackendStatus({ info }: { info: BackendInfo | null }) {
+export default function BackendStatus({
+  info,
+  llm,
+}: {
+  info: BackendInfo | null;
+  llm?: LlmProviderStatus[] | null;
+}) {
   const { t } = useTranslation();
   if (!info) {
     return (
@@ -43,6 +49,29 @@ export default function BackendStatus({ info }: { info: BackendInfo | null }) {
           agent
         </span>
       )}
+      {/* Third-party LLM provider status (visible "API connected" signal). */}
+      {llm &&
+        (llm.length === 0 ? (
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
+            {t("agent.llmOff")}
+          </span>
+        ) : (
+          llm.map((p) => (
+            <span
+              key={p.name}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                p.key_present
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+              title={p.base_url}
+            >
+              {p.key_present
+                ? t("agent.llmOk", { name: p.name })
+                : t("agent.llmNoKey", { name: p.name })}
+            </span>
+          ))
+        ))}
     </span>
   );
 }

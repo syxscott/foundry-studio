@@ -18,8 +18,9 @@ from foundry_studio.engines.registry import (
     real_engine_available,
 )
 from foundry_studio.i18n import MESSAGES
-from foundry_studio.schemas import CheckpointInfo, HealthResponse, ModelInfo
 from foundry_studio.joblifecycle import JobOrchestrator
+from foundry_studio.llm.registry import build_registry
+from foundry_studio.schemas import CheckpointInfo, HealthResponse, ModelInfo
 
 router = APIRouter()
 
@@ -43,6 +44,7 @@ def health(
         data_dir=str(settings.resolved_data_dir()),
         backend=info,
         workers=[info],
+        llm={"providers": build_registry(settings).summaries()},
         message=None,
     )
 

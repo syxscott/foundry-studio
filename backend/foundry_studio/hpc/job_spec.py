@@ -58,7 +58,7 @@ class JobSpec:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "JobSpec":
+    def from_dict(cls, data: dict[str, Any]) -> JobSpec:
         return cls(
             model=data["model"],
             params=data.get("params", {}),

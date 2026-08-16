@@ -1,27 +1,32 @@
 """Planner: natural-language -> JobSpec draft.
 
-Two modes:
-- *Heuristic* (default, zero dependencies): a deterministic parser that recognises
-  the model id, common parameters, and resource hints from a free-text instruction.
-  It never invents values and reports unrecognised snippets as warnings, so the
-  agent always produces a valid, transparent plan.
-- *LLM* (optional): when ``agent_llm_url`` is configured, the same interface
-  delegates to that endpoint.  If the call fails, it falls back to the heuristic
-  so the system keeps working without a live model.
+Two modes share one contract (the :class:`PlanResult`):
 
-The output :class:`PlanResult` is exactly what the UI shows for confirmation and
-what ``/api/agent/run`` turns into a submitted job — one shared contract for the
-in-app chat agent and external agents alike.
+- *Heuristic* (default, zero dependencies): a deterministic parser that recognises
+  the model id, common parameters, and resource hints from free text. It never
+  invents values and reports unrecognised snippets as warnings, so the agent
+  always produces a valid, transparent plan.
+- *LLM* (optional): when ``agent_llm_provider`` is configured, the planner sends
+  the instruction (plus the model catalog) to that OpenAI-compatible endpoint and
+  parses the JSON plan it returns. If the call fails for any reason it falls back
+  to the heuristic, so the system keeps working without a live model.
+
+The streaming path (``plan_stream``) is what the in-app chat agent consumes for
+real-time token display; the one-shot path (``resolve``) is what the external
+Control API (``/run``) uses.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from foundry_studio.config import Settings
 from foundry_studio.engines import models as model_catalog
+from foundry_studio.llm.registry import build_registry
 
 _MODEL_ALIASES: dict[str, str] = {
     "rfd3na": "rfd3na",
@@ -69,22 +74,121 @@ class PlanResult:
 
 
 class Planner:
-    def __init__(self, *, llm_url: str = "", llm_model: str = "", llm_token: str = ""):
-        self.llm_url = llm_url
-        self.llm_model = llm_model
-        self.llm_token = llm_token
+    def __init__(self, settings: Settings | None = None):
+        self.settings = settings
 
-    def plan(self, text: str) -> PlanResult:
-        if self.llm_url:
-            try:
-                return self._plan_llm(text)
-            except Exception as exc:  # noqa: BLE001
-                # Fall back rather than fail the whole request.
-                result = self._plan_heuristic(text)
-                result.warnings.append(f"llm planner unavailable ({exc}); used heuristic")
-                return result
-        return self._plan_heuristic(text)
+    # ------------------------------------------------------------------ #
+    # Public entry points
+    # ------------------------------------------------------------------ #
+    def _registry(self):
+        if self.settings is None:
+            return None
+        return build_registry(self.settings)
 
+    async def resolve(self, text: str) -> PlanResult:
+        """One-shot planning for the Control API: LLM when available, else heuristic."""
+        reg = self._registry()
+        provider = reg.default_provider() if reg else None
+        if provider is None:
+            return self._plan_heuristic(text)
+        try:
+            messages = self._build_messages(text)
+            model = getattr(self.settings, "agent_llm_model", None)
+            raw = await provider.complete(messages, model=model or None)
+            return self._parse_llm_plan(raw, text)
+        except Exception as exc:  # noqa: BLE001
+            result = self._plan_heuristic(text)
+            result.warnings.append(f"llm planner unavailable ({exc}); used heuristic")
+            return result
+
+    async def plan_stream(self, text: str) -> AsyncIterator[dict[str, Any]]:
+        """Stream planning events: ``token`` deltas then a final ``plan`` event.
+
+        Yields dicts of the form
+        ``{"type": "token", "text": "…"}`` and
+        ``{"type": "plan", "plan": <PlanResult.to_dict()>}``. On any failure it
+        yields a heuristic ``plan`` rather than raising, so the UI always gets a
+        usable result.
+        """
+        reg = self._registry()
+        provider = reg.default_provider() if reg else None
+        if provider is None:
+            yield {"type": "plan", "plan": self._plan_heuristic(text).to_dict()}
+            return
+        try:
+            messages = self._build_messages(text)
+            model = getattr(self.settings, "agent_llm_model", None)
+            acc: list[str] = []
+            async for delta in provider.stream(messages, model=model or None):
+                acc.append(delta)
+                yield {"type": "token", "text": delta}
+            plan = self._parse_llm_plan("".join(acc), text)
+            yield {"type": "plan", "plan": plan.to_dict()}
+        except Exception as exc:  # noqa: BLE001
+            result = self._plan_heuristic(text)
+            result.warnings.append(f"llm planner unavailable ({exc}); used heuristic")
+            yield {"type": "plan", "plan": result.to_dict()}
+
+    # ------------------------------------------------------------------ #
+    # LLM message construction + parsing
+    # ------------------------------------------------------------------ #
+    def _build_messages(self, text: str) -> list[dict[str, str]]:
+        catalog_lines = []
+        for m in model_catalog.all_models():
+            caps = m.get("capabilities", [])
+            catalog_lines.append(
+                f"- {m['id']}: {m.get('name', '')} — capabilities: {', '.join(caps)}"
+            )
+        catalog = "\n".join(catalog_lines)
+        system = (
+            "You are the planning agent for foundry-studio, a control surface for the "
+            "RosettaCommons Foundry protein-design toolkit (RFD3, RFD3NA, RF3, "
+            "ProteinMPNN). Given a natural-language experiment description, output a "
+            "single JSON object and NOTHING else.\n"
+            "Required keys:\n"
+            "  model: one of [rfd3, rfd3na, rf3, mpnn]\n"
+            "  name: short job name (string)\n"
+            "  params: object of model parameters (contigs, n_batches, "
+            "diffusion_steps, sampler, symmetry, hotspots, seed, num_steps, "
+            "n_recycles, temperature, model_type, number_of_batches, batch_size, …)\n"
+            "  resources: object with optional keys gres (e.g. 'gpu:1'), account, "
+            "partition, time (HH:MM:SS)\n"
+            "  invocation: object (usually {})\n"
+            "  warnings: array of strings (notes about ambiguity)\n"
+            "  missing_inputs: array of strings (e.g. ['upload a structure file "
+            "(cif/pdb)'])\n"
+            "Available models:\n"
+            f"{catalog}\n"
+            "Only output the JSON object. Do not wrap it in markdown fences."
+        )
+        return [
+            {"role": "system", "content": system},
+            {"role": "user", "content": text},
+        ]
+
+    def _parse_llm_plan(self, raw: str, text: str) -> PlanResult:
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise ValueError("LLM did not return a JSON plan")
+        blob = raw[start : end + 1]
+        data = json.loads(blob)
+        model = data.get("model")
+        if model is None or model_catalog.get_model(model) is None:
+            raise ValueError(f"LLM returned unknown model '{model}'")
+        return PlanResult(
+            model=model,
+            name=data.get("name", "") or f"{model} agent job",
+            params=data.get("params", {}) or {},
+            resources=data.get("resources", {}) or {},
+            invocation=data.get("invocation", {}) or {},
+            warnings=list(data.get("warnings", []) or []),
+            missing_inputs=list(data.get("missing_inputs", []) or []),
+            resolved_by="llm",
+        )
+
+    # ------------------------------------------------------------------ #
+    # Heuristic parser (unchanged behaviour, dependency-free)
     # ------------------------------------------------------------------ #
     def _plan_heuristic(self, text: str) -> PlanResult:
         lowered = text.lower()
@@ -197,43 +301,9 @@ class Planner:
             resources["time"] = m.group(1)
 
     def _check_inputs(self, model: str, info: dict, text: str) -> list[str]:
-        # Models that need an input structure, but only warn if none mentioned.
         needs = model in ("rf3", "mpnn", "rfd3na")
         mentioned = bool(re.search(r"\.(cif|pdb|fasta|fa|json)\b", text, re.I))
         if needs and not mentioned:
             exts = info.get("accepted_extensions", [])
             return [f"upload a structure file ({', '.join(exts)}) before running"]
         return []
-
-    # ------------------------------------------------------------------ #
-    def _plan_llm(self, text: str) -> PlanResult:
-        import urllib.request
-
-        payload = json.dumps(
-            {"model": self.llm_model or "foundry-agent", "prompt": text}
-        ).encode("utf-8")
-        req = urllib.request.Request(
-            self.llm_url,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                **({"Authorization": f"Bearer {self.llm_token}"} if self.llm_token else {}),
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
-            data = json.loads(resp.read().decode("utf-8"))
-        # Expect either a full plan or a text completion we re-parse heuristically.
-        if isinstance(data, dict) and data.get("model"):
-            return PlanResult(
-                model=data["model"],
-                params=data.get("params", {}),
-                name=data.get("name", ""),
-                resources=data.get("resources", {}),
-                invocation=data.get("invocation", {}),
-                warnings=data.get("warnings", []),
-                missing_inputs=data.get("missing_inputs", []),
-                resolved_by="llm",
-            )
-        # Treat the LLM reply as natural language and re-parse.
-        return self._plan_heuristic(data.get("text", str(data)))

@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from foundry_studio.agent.planner import PlanResult, Planner
+from foundry_studio.agent.planner import Planner, PlanResult
 
 __all__ = ["Planner", "PlanResult"]

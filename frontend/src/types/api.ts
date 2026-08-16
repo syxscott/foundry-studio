@@ -50,12 +50,23 @@ export interface HealthResponse {
   data_dir: string;
   backend: BackendInfo;
   workers: { model: string; pid: number; alive: boolean; exit_code?: number | null }[];
+  llm?: { providers: LlmProviderStatus[] } | null;
   message?: string | null;
+}
+
+export interface LlmProviderStatus {
+  name: string;
+  base_url: string;
+  model: string | null;
+  api_key_env: string;
+  key_present: boolean;
+  configured: boolean;
 }
 
 export interface AgentCapabilities {
   version: string;
   backend: BackendInfo;
+  providers: LlmProviderStatus[];
   models: {
     id: string;
     name: string | null;

@@ -117,7 +117,7 @@ export default function App() {
           </nav>
           <LanguageSwitcher />
           <span className="ml-1 hidden sm:inline-flex">
-            <BackendStatus info={health?.backend ?? null} />
+            <BackendStatus info={health?.backend ?? null} llm={health?.llm?.providers} />
           </span>
         </div>
       </header>

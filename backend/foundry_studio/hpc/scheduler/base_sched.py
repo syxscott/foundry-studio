@@ -15,7 +15,16 @@ import re
 from pathlib import Path
 from typing import Any
 
-from foundry_studio.hpc.base import Backend, HPCNotConfigured, RemoteHandle, STATUS_CANCELED, STATUS_FAILED, STATUS_PENDING, STATUS_RUNNING, STATUS_SUCCEEDED
+from foundry_studio.hpc.base import (
+    STATUS_CANCELED,
+    STATUS_FAILED,
+    STATUS_PENDING,
+    STATUS_RUNNING,
+    STATUS_SUCCEEDED,
+    Backend,
+    HPCNotConfigured,
+    RemoteHandle,
+)
 from foundry_studio.hpc.job_spec import JobSpec
 
 
@@ -126,7 +135,7 @@ class SchedulerBackend(Backend):
             lines.append(base)
         elif kind == "conda":
             env = inv.get("conda_env") or self.settings.hpc_conda_env or "foundry"
-            lines.append(f"source \"$(conda info --base)/etc/profile.d/conda.sh\"")
+            lines.append("source \"$(conda info --base)/etc/profile.d/conda.sh\"")
             lines.append(f"conda activate {self._safe(env)}")
             lines.append(base)
         else:

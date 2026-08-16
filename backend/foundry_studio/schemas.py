@@ -65,6 +65,7 @@ class HealthResponse(BaseModel):
     data_dir: str
     backend: dict[str, Any] = Field(default_factory=dict)
     workers: list[dict[str, Any]] = Field(default_factory=list)
+    llm: dict[str, Any] | None = None
     message: str | None = None
 
 
