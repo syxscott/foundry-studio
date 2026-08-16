@@ -1,0 +1,38 @@
+# foundry-studio with NVIDIA GPU passthrough.
+#
+#   docker compose up --build
+#
+# The image installs the real Foundry stack (rc-foundry[all]) and downloads
+# model checkpoints on first run via the Environment page. Without a GPU the
+# service still runs and falls back to the clearly-labelled simulation engine.
+services:
+  foundry-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: foundry-studio:latest
+    container_name: foundry-studio
+    ports:
+      - "8765:8765"
+    environment:
+      - FOUNDRY_STUDIO_HOST=0.0.0.0
+      - FOUNDRY_STUDIO_PORT=8765
+      - FOUNDRY_STUDIO_DATA_DIR=/data
+      - FOUNDRY_STUDIO_ALLOW_REMOTE_ACCESS=true
+      # Real engines when available; otherwise labelled simulation.
+      - FOUNDRY_STUDIO_ENGINE_MODE=auto
+    volumes:
+      - foundry-studio-data:/data
+      # Share checkpoints with the host Foundry installation if it exists.
+      - ${HOME}/.foundry/checkpoints:/root/.foundry/checkpoints
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  foundry-studio-data:

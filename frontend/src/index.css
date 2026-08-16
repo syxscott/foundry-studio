@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-surface-alt text-slate-800 antialiased;
+  margin: 0;
+}
+
+/* Thin scrollbars for log panels */
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
