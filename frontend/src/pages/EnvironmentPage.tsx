@@ -77,7 +77,7 @@ export function EnvironmentPage() {
         </div>
         {items && items.some((c) => c.installed) && (
           <button
-            className="px-3 py-1.5 border border-red-200 text-red-600 rounded-md text-sm hover:bg-red-50"
+            className="btn-danger"
             onClick={() => void handleClean()}
           >
             {t("environment.clean")}
@@ -106,21 +106,21 @@ export function EnvironmentPage() {
       ) : items.length === 0 ? (
         <p className="text-slate-400 py-10 text-center">{t("environment.noCheckpoints")}</p>
       ) : (
-        <div className="bg-white border border-surface-border rounded-lg overflow-hidden">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-surface-alt text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{t("environment.col.name")}</th>
-                <th className="px-4 py-3">{t("environment.col.filename")}</th>
-                <th className="px-4 py-3">{t("environment.col.description")}</th>
-                <th className="px-4 py-3">{t("environment.col.size")}</th>
-                <th className="px-4 py-3">{t("environment.col.status")}</th>
-                <th className="px-4 py-3 text-right">{t("environment.col.actions")}</th>
+              <tr className="bg-surface-alt text-left text-xs uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 font-semibold">{t("environment.col.name")}</th>
+                <th className="px-4 py-3 font-semibold">{t("environment.col.filename")}</th>
+                <th className="px-4 py-3 font-semibold">{t("environment.col.description")}</th>
+                <th className="px-4 py-3 font-semibold">{t("environment.col.size")}</th>
+                <th className="px-4 py-3 font-semibold">{t("environment.col.status")}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t("environment.col.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {items.map((c) => (
-                <tr key={c.name} className="border-t border-surface-border">
+                <tr key={c.name} className="border-t border-surface-border hover:bg-surface-alt/70 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{c.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{c.filename}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs max-w-xs">
@@ -141,7 +141,7 @@ export function EnvironmentPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       disabled={installing !== null}
-                      className="text-xs px-3 py-1 border border-surface-border rounded-md hover:bg-surface-alt disabled:opacity-50"
+                      className="btn-soft disabled:opacity-50"
                       onClick={() => void handleInstall(c.name)}
                     >
                       {installing === c.name ? t("environment.installing") : c.installed ? t("environment.reinstall") : t("environment.install")}

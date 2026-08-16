@@ -29,6 +29,28 @@ function parseHash(): Route {
   return { name: "home" };
 }
 
+/** Inline double-helix mark — crisp at any size, no emoji dependency. */
+function Logo() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <rect width="32" height="32" rx="7" fill="url(#fs-grad)" />
+      <defs>
+        <linearGradient id="fs-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#225a94" />
+          <stop offset="1" stopColor="#0891b2" />
+        </linearGradient>
+      </defs>
+      <g fill="none" strokeLinecap="round" strokeWidth="2">
+        <path d="M11 5c5 4 5 8 0 12s-5 8 0 12" stroke="#67e8f9" />
+        <path d="M21 5c-5 4-5 8 0 12s5 8 0 12" stroke="#ffffff" />
+      </g>
+      <g stroke="#cffafe" strokeWidth="1.6">
+        <path d="M11 8.5h9M11 14.5h10M11 20.5h9M11 26.5h10" />
+      </g>
+    </svg>
+  );
+}
+
 export default function App() {
   const { t } = useTranslation();
   const [route, setRoute] = useState<Route>(parseHash);
@@ -64,20 +86,22 @@ export default function App() {
   };
 
   const navClass = (active: boolean) =>
-    `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-      active ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"
+    `px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+      active ? "bg-brand-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
     }`;
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-surface-border sticky top-0 z-20">
+      <header className="bg-white/90 backdrop-blur border-b border-surface-border sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-4">
           <button
-            className="flex items-center gap-2 font-semibold text-brand-700"
+            className="flex items-center gap-2 font-semibold text-slate-800"
             onClick={() => navigate({ name: "home" })}
           >
-            <span className="text-lg">🧬</span>
-            <span>{t("app.title")}</span>
+            <Logo />
+            <span className="bg-gradient-to-r from-brand-600 to-accent-500 bg-clip-text text-transparent">
+              {t("app.title")}
+            </span>
           </button>
           <nav className="flex-1 flex gap-1">
             <button className={navClass(route.name === "home")} onClick={() => navigate({ name: "home" })}>
@@ -96,7 +120,7 @@ export default function App() {
 
       <SimulationBanner health={health} />
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 animate-fade-in">
         {route.name === "home" && <HomePage health={health} />}
         {route.name === "jobs" && <JobsPage onOpen={(id) => navigate({ name: "job", id })} />}
         {route.name === "job" && (
@@ -105,9 +129,11 @@ export default function App() {
         {route.name === "environment" && <EnvironmentPage />}
       </main>
 
-      <footer className="border-t border-surface-border py-4 text-center text-xs text-slate-400">
-        {t("app.title")} · {t("app.tagline")}
-        {health && <span className="ml-2">· v{health.version}</span>}
+      <footer className="border-t border-surface-border py-5 text-center text-xs text-slate-400 bg-white/60">
+        <p>
+          <span className="font-medium text-slate-500">{t("app.title")}</span> · {t("app.tagline")}
+          {health && <span className="ml-2 text-slate-300">v{health.version}</span>}
+        </p>
       </footer>
     </div>
   );

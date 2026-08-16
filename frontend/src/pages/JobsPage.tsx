@@ -60,8 +60,10 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-md text-xs font-medium ${
-                filter === f ? "bg-brand-600 text-white" : "bg-white border border-surface-border text-slate-600 hover:bg-surface-alt"
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                filter === f
+                  ? "bg-brand-600 text-white shadow-sm"
+                  : "bg-white border border-surface-border text-slate-600 hover:bg-surface-alt"
               }`}
             >
               {f === "all" ? t("jobs.filterAll") : t(`jobs.status.${f}`)}
@@ -81,21 +83,21 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
           {filter === "all" ? t("jobs.empty") : t("jobs.noJobs")}
         </p>
       ) : (
-        <div className="bg-white border border-surface-border rounded-lg overflow-hidden">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-surface-alt text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{t("jobs.col.name")}</th>
-                <th className="px-4 py-3">{t("jobs.col.model")}</th>
-                <th className="px-4 py-3">{t("jobs.col.status")}</th>
-                <th className="px-4 py-3">{t("jobs.col.progress")}</th>
-                <th className="px-4 py-3">{t("jobs.col.createdAt")}</th>
-                <th className="px-4 py-3 text-right">{t("jobs.col.actions")}</th>
+              <tr className="bg-surface-alt text-left text-xs uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 font-semibold">{t("jobs.col.name")}</th>
+                <th className="px-4 py-3 font-semibold">{t("jobs.col.model")}</th>
+                <th className="px-4 py-3 font-semibold">{t("jobs.col.status")}</th>
+                <th className="px-4 py-3 font-semibold">{t("jobs.col.progress")}</th>
+                <th className="px-4 py-3 font-semibold">{t("jobs.col.createdAt")}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t("jobs.col.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} className="border-t border-surface-border hover:bg-surface-alt/50">
+                <tr key={job.id} className="border-t border-surface-border hover:bg-surface-alt/70 transition-colors">
                   <td className="px-4 py-3">
                     <button className="text-brand-700 hover:underline font-medium" onClick={() => onOpen(job.id)}>
                       {job.name || job.id.slice(0, 8)}

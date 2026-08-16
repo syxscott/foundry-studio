@@ -165,14 +165,14 @@ export function JobDetailPage({
         <div className="flex gap-2">
           {job.status === "draft" && (
             <button
-              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md text-sm"
+              className="btn-primary"
               onClick={() => void handleSubmit()}
             >
               {t("jobDetail.actions.submit")}
             </button>
           )}
           <button
-            className="px-4 py-2 border border-amber-300 text-amber-700 rounded-md text-sm hover:bg-amber-50"
+            className="btn-ghost"
             onClick={() => void handleCancel()}
           >
             {t("jobDetail.actions.cancel")}
@@ -181,7 +181,7 @@ export function JobDetailPage({
       )}
       {(job.status === "succeeded" || job.status === "failed" || job.status === "canceled") && (
         <button
-          className="px-4 py-2 border border-red-200 text-red-600 rounded-md text-sm hover:bg-red-50"
+          className="btn-danger"
           onClick={() => void handleDelete()}
         >
           {t("jobDetail.actions.delete")}
@@ -211,7 +211,7 @@ export function JobDetailPage({
               {cifOutputs.map((o) => (
                 <button
                   key={o.url}
-                  className="text-xs px-3 py-1.5 bg-brand-50 text-brand-700 border border-brand-200 rounded-md hover:bg-brand-100"
+                  className="btn-soft border border-brand-200 text-brand-700 bg-brand-50 hover:bg-brand-100"
                   onClick={() => setViewUrl(o.url)}
                 >
                   {t("jobDetail.view3d")} · {o.name}
@@ -219,7 +219,7 @@ export function JobDetailPage({
               ))}
               {job.outputs.length > 0 && (
                 <button
-                  className="text-xs px-3 py-1.5 border border-surface-border rounded-md hover:bg-surface-alt"
+                  className="btn-soft"
                   onClick={() => void downloadAll()}
                 >
                   {t("jobDetail.actions.downloadAll")}
@@ -265,7 +265,7 @@ export function JobDetailPage({
 
 function Meta({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="bg-white border border-surface-border rounded-md px-3 py-2">
+    <div className="bg-white border border-surface-border rounded-lg px-3 py-2 shadow-sm">
       <p className="text-xs text-slate-400">{label}</p>
       <p className={`text-sm text-slate-700 mt-0.5 ${mono ? "font-mono" : ""}`}>{value}</p>
     </div>
@@ -274,7 +274,7 @@ function Meta({ label, value, mono }: { label: string; value: string; mono?: boo
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-surface-border rounded-lg p-4">
+    <div className="card p-4">
       <h3 className="text-sm font-semibold text-slate-700 mb-2">{title}</h3>
       {children}
     </div>

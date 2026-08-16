@@ -68,7 +68,7 @@ function FieldInput({
       ? t(field.descriptionKey, { defaultValue: field.description })
       : field.description;
   const label = (
-    <label className="block text-sm font-medium text-slate-700 mb-1">
+    <label className="field-label">
       {titleText}
       {field.required && <span className="text-red-500 ml-0.5">*</span>}
       {!field.required && (
@@ -82,7 +82,7 @@ function FieldInput({
       <div>
         {label}
         <select
-          className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
+          className="select"
           value={String(value ?? "")}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -92,9 +92,7 @@ function FieldInput({
             </option>
           ))}
         </select>
-        {descText && (
-          <p className="text-xs text-slate-400 mt-1">{descText}</p>
-        )}
+        {descText && <p className="text-xs text-slate-400 mt-1">{descText}</p>}
       </div>
     );
   }
@@ -133,11 +131,9 @@ function FieldInput({
             }
             onChange(field.type === "integer" ? parseInt(raw, 10) : parseFloat(raw));
           }}
-          className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
+          className="input"
         />
-        {descText && (
-          <p className="text-xs text-slate-400 mt-1">{descText}</p>
-        )}
+        {descText && <p className="text-xs text-slate-400 mt-1">{descText}</p>}
       </div>
     );
   }
@@ -150,11 +146,9 @@ function FieldInput({
         type="text"
         value={value === undefined || value === null ? "" : String(value)}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
+        className="input"
       />
-      {descText && (
-        <p className="text-xs text-slate-400 mt-1">{descText}</p>
-      )}
+      {descText && <p className="text-xs text-slate-400 mt-1">{descText}</p>}
     </div>
   );
 }
@@ -268,7 +262,8 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
   if (!models) {
     return (
       <div className="py-20 text-center text-slate-400">
-        {t("common.loading")}
+        <span className="spinner text-brand-500" />
+        <p className="mt-3">{t("common.loading")}</p>
         {!health && <p className="mt-2 text-sm">{t("common.serverUnreachable")}</p>}
       </div>
     );
@@ -278,67 +273,75 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
     <div className="grid lg:grid-cols-[320px_1fr] gap-6">
       {/* Model selection */}
       <aside className="space-y-2">
-        <h2 className="text-lg font-semibold text-slate-800">{t("home.model")}</h2>
-        {models.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => switchModel(m.id)}
-            className={`w-full text-left border rounded-lg p-3 transition-colors ${
-              selected === m.id
-                ? "border-brand-600 bg-brand-50"
-                : "border-surface-border bg-white hover:bg-surface-alt"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-800 text-sm">
-                {m.name_key ? t(m.name_key, { defaultValue: m.name }) : m.name}
-              </span>
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                  m.checkpoint_state === "installed"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-amber-100 text-amber-700"
-                }`}
-              >
-                {m.checkpoint_state === "installed" ? t("environment.installed") : t("environment.missing")}
-              </span>
-            </div>
-            {selected === m.id && (
-              <div className="mt-2 text-xs text-slate-500 space-y-1">
-                <p>
-                  {t("home.modelDescription")}:{" "}
-                  {m.description_key
-                    ? t(m.description_key, { defaultValue: m.description })
-                    : m.description}
-                </p>
-                <p>
-                  {t("home.capabilities")}:{" "}
-                  {m.capabilities
-                    .map((c, i) =>
-                      m.capability_keys?.[i]
-                        ? t(m.capability_keys[i], { defaultValue: c })
-                        : c,
-                    )
-                    .join(", ")}
-                </p>
-                <p>
-                  {t("jobDetail.engineMode")}:{" "}
-                  {m.effective_engine === "real"
-                    ? t("app.realMode")
-                    : t("app.simulationMode")}
-                </p>
-                {m.checkpoint_state !== "installed" && (
-                  <p className="text-amber-600">{t("home.checkpointMissing")}</p>
-                )}
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400 px-1">
+          {t("home.model")}
+        </h2>
+        {models.map((m) => {
+          const isSel = selected === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => switchModel(m.id)}
+              className={`w-full text-left card p-3 transition-all ${
+                isSel
+                  ? "ring-2 ring-brand-500 bg-brand-50"
+                  : "hover:-translate-y-0.5 hover:shadow-card"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid place-items-center h-9 w-9 shrink-0 rounded-lg bg-gradient-to-br from-brand-600 to-accent-500 text-white text-[11px] font-bold tracking-tight shadow-sm">
+                  {m.id.toUpperCase()}
+                </span>
+                <span className="font-medium text-slate-800 text-sm flex-1 min-w-0 truncate">
+                  {m.name_key ? t(m.name_key, { defaultValue: m.name }) : m.name}
+                </span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                    m.checkpoint_state === "installed"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {m.checkpoint_state === "installed" ? t("environment.installed") : t("environment.missing")}
+                </span>
               </div>
-            )}
-          </button>
-        ))}
+              {isSel && (
+                <div className="mt-3 pl-12 text-xs text-slate-500 space-y-1">
+                  <p>
+                    {t("home.modelDescription")}:{" "}
+                    {m.description_key
+                      ? t(m.description_key, { defaultValue: m.description })
+                      : m.description}
+                  </p>
+                  <p>
+                    {t("home.capabilities")}:{" "}
+                    {m.capabilities
+                      .map((c, i) =>
+                        m.capability_keys?.[i]
+                          ? t(m.capability_keys[i], { defaultValue: c })
+                          : c,
+                      )
+                      .join(", ")}
+                  </p>
+                  <p>
+                    {t("jobDetail.engineMode")}:{" "}
+                    {m.effective_engine === "real"
+                      ? t("app.realMode")
+                      : t("app.simulationMode")}
+                  </p>
+                  {m.checkpoint_state !== "installed" && (
+                    <p className="text-amber-600">{t("home.checkpointMissing")}</p>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </aside>
 
       {/* Form */}
-      <section className="bg-white border border-surface-border rounded-lg p-5 space-y-5">
-        <div>
+      <section className="card p-5 sm:p-6 space-y-5">
+        <div className="border-l-4 border-brand-500 pl-3">
           <h2 className="text-lg font-semibold text-slate-800">{t("home.title")}</h2>
           <p className="text-sm text-slate-500">{t("home.subtitle")}</p>
         </div>
@@ -347,23 +350,23 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
           <>
             {/* Job name */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t("home.jobName")}</label>
+              <label className="field-label">{t("home.jobName")}</label>
               <input
                 type="text"
                 value={jobName}
                 onChange={(e) => setJobName(e.target.value)}
                 placeholder={t("home.jobNamePlaceholder")}
-                className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
+                className="input"
               />
             </div>
 
             {/* Engine mode */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t("home.engineMode")}</label>
+              <label className="field-label">{t("home.engineMode")}</label>
               <select
                 value={engineMode}
                 onChange={(e) => setEngineMode(e.target.value)}
-                className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
+                className="select"
               >
                 <option value="auto">{t("home.engineAuto")}</option>
                 <option value="real">{t("home.engineReal")}</option>
@@ -392,14 +395,14 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
 
             {advanced ? (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">{t("home.advanced")}</label>
+                <label className="field-label">{t("home.advanced")}</label>
                 <p className="text-xs text-slate-400 mb-1">{t("home.advancedHint")}</p>
                 <textarea
                   value={advancedJson}
                   onChange={(e) => setAdvancedJson(e.target.value)}
                   rows={12}
                   spellCheck={false}
-                  className="w-full font-mono text-xs border border-surface-border rounded-md p-3 bg-slate-50 focus:ring-2 focus:ring-brand-500"
+                  className="input font-mono text-xs leading-relaxed"
                 />
               </div>
             ) : (
@@ -417,7 +420,7 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
 
             {/* File upload */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t("home.inputFiles")}</label>
+              <label className="field-label">{t("home.inputFiles")}</label>
               <p className="text-xs text-slate-400 mb-2">
                 {t("home.inputFilesHint", { exts: model.accepted_extensions.join(", ") })}
               </p>
@@ -425,7 +428,7 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
                 <select
                   value={fileRole}
                   onChange={(e) => setFileRole(e.target.value)}
-                  className="border border-surface-border rounded-md px-2 py-1.5 text-sm bg-white"
+                  className="select w-auto"
                 >
                   <option value="structure">{t("home.roleStructure")}</option>
                   {model.id !== "rf3" && <option value="scaffold">{t("home.roleScaffold")}</option>}
@@ -435,7 +438,7 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-sm px-3 py-1.5 border border-surface-border rounded-md bg-white hover:bg-surface-alt"
+                  className="btn-ghost"
                 >
                   {t("home.dropHere")}
                 </button>
@@ -453,10 +456,12 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
                   <li className="text-slate-500">{t("home.uploaded")}</li>
                   {files.map((f) => (
                     <li key={f.name} className="flex items-center gap-2">
-                      <span>{f.name}</span>
-                      <span className="text-xs text-slate-400">({(f.size / 1024).toFixed(1)} KB)</span>
+                      <span className="truncate">{f.name}</span>
+                      <span className="text-xs text-slate-400 shrink-0">
+                        ({(f.size / 1024).toFixed(1)} KB)
+                      </span>
                       <button
-                        className="text-red-500 text-xs hover:underline"
+                        className="text-red-500 text-xs hover:underline shrink-0"
                         onClick={() => setFiles((prev) => prev.filter((x) => x.name !== f.name))}
                       >
                         {t("common.cancel")}
@@ -471,7 +476,7 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
 
             {notice && (
               <div
-                className={`text-sm rounded-md px-3 py-2 ${
+                className={`text-sm rounded-lg px-3 py-2 ${
                   notice.kind === "ok"
                     ? "bg-green-50 text-green-700 border border-green-200"
                     : "bg-red-50 text-red-700 border border-red-200"
@@ -479,10 +484,7 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
               >
                 {notice.text}
                 {createdJobId && notice.kind === "ok" && (
-                  <a
-                    className="ml-2 underline"
-                    href={`#/jobs/${createdJobId}`}
-                  >
+                  <a className="ml-2 underline font-medium" href={`#/jobs/${createdJobId}`}>
                     {t("jobs.view")} →
                   </a>
                 )}
@@ -492,8 +494,9 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
             <button
               onClick={() => void handleSubmit()}
               disabled={submitting}
-              className="w-full sm:w-auto px-6 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-md text-sm font-medium"
+              className="btn-primary w-full sm:w-auto"
             >
+              {submitting && <span className="spinner" />}
               {submitting ? t("home.submitting") : t("home.submit")}
             </button>
           </>

@@ -95,10 +95,7 @@ export function StructureViewer({
       <div className="bg-white rounded-lg w-full max-w-4xl h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
           <h3 className="font-semibold text-slate-800">{t("viewer.title")}</h3>
-          <button
-            className="px-3 py-1 text-sm border border-surface-border rounded-md hover:bg-surface-alt"
-            onClick={onClose}
-          >
+          <button className="btn-soft" onClick={onClose}>
             {t("viewer.close")}
           </button>
         </div>
@@ -109,7 +106,7 @@ export function StructureViewer({
             <select
               value={rep}
               onChange={(e) => updateRep(e.target.value as Representation)}
-              className="ml-2 border border-surface-border rounded px-2 py-1 text-sm"
+              className="ml-2 border border-surface-border rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               {REPS.map((r) => (
                 <option key={r} value={r}>
@@ -123,7 +120,7 @@ export function StructureViewer({
             <select
               value={color}
               onChange={(e) => updateColor(e.target.value as ColorScheme)}
-              className="ml-2 border border-surface-border rounded px-2 py-1 text-sm"
+              className="ml-2 border border-surface-border rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             >
               {COLORS.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -133,7 +130,7 @@ export function StructureViewer({
             </select>
           </label>
           <button
-            className="text-xs px-3 py-1 border border-surface-border rounded-md hover:bg-surface-alt"
+            className="btn-soft"
             onClick={() => {
               stageRef.current?.compList[0]?.autoView();
               stageRef.current?.viewer.requestRender();

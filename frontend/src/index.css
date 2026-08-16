@@ -9,9 +9,64 @@
 body {
   @apply bg-surface-alt text-slate-800 antialiased;
   margin: 0;
+  /* Subtle scientific "lab" backdrop: faint radial glows over a cool slate field. */
+  background-image:
+    radial-gradient(60rem 60rem at 12% -10%, rgba(34, 90, 148, 0.06), transparent 60%),
+    radial-gradient(48rem 48rem at 100% 0%, rgba(6, 182, 212, 0.05), transparent 55%);
+  background-attachment: fixed;
 }
 
-/* Thin scrollbars for log panels */
+/* ---------------------------------------------------------------------------
+   Reusable design-system primitives. Keeps buttons, inputs and cards visually
+   consistent across every page without repeating utility strings.
+--------------------------------------------------------------------------- */
+@layer components {
+  .card {
+    @apply bg-white border border-surface-border rounded-xl shadow-card;
+  }
+
+  .field-label {
+    @apply block text-sm font-medium text-slate-700 mb-1;
+  }
+
+  .input,
+  .select {
+    @apply w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition
+      placeholder:text-slate-400
+      focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition
+      disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white px-4 py-2.5 shadow-sm hover:bg-brand-700 active:bg-brand-800;
+  }
+
+  .btn-ghost {
+    @apply btn border border-surface-border bg-white px-4 py-2 text-slate-700 hover:bg-surface-alt;
+  }
+
+  .btn-danger {
+    @apply btn border border-red-200 bg-white px-4 py-2 text-red-600 hover:bg-red-50;
+  }
+
+  .btn-soft {
+    @apply btn rounded-md bg-surface-alt px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border;
+  }
+
+  .spinner {
+    @apply inline-block h-4 w-4 rounded-full border-2 border-current border-r-transparent animate-spin-slow;
+  }
+}
+
+/* Thin scrollbars for log / output panels */
 .scroll-thin::-webkit-scrollbar {
   width: 8px;
   height: 8px;
