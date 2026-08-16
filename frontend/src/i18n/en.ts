@@ -19,6 +19,31 @@ export const en: TranslationKey = {
     simulationMode: "Simulation mode",
     unstarted: "Not started",
   },
+  backend: {
+    unknown: "Backend unknown",
+    ready: "Ready",
+    notConfigured: "Not configured",
+  },
+  agent: {
+    title: "Agent collaboration panel",
+    subtitle: "Describe your experiment in natural language; the agent parses it into a submittable job plan. External programs can also drive the Control API directly.",
+    inputPlaceholder: "e.g. Design an 80-residue binder with RFD3, targeting hotspots A12/B34, sample 5 designs…",
+    parse: "Parse plan",
+    parsing: "Parsing…",
+    clear: "Clear",
+    submit: "Confirm & submit",
+    submitting: "Submitting…",
+    planTitle: "Parsed plan",
+    plan: {
+      params: "Parameters",
+      resources: "Resources / scheduler",
+      invocation: "Invocation",
+      warnings: "Notes",
+      missing: "Missing",
+    },
+    externalTitle: "External agent access",
+    externalHint: "An external LLM can submit jobs programmatically, bypassing this UI:",
+  },
   models: {
     rfd3: {
       name: "RFdiffusion3 (RFD3)",
@@ -200,6 +225,14 @@ export const en: TranslationKey = {
       needFile: "Model {{model}} requires at least one input file",
     },
     advancedError: "Failed to parse advanced JSON: {{detail}}",
+    centerTitle: "Experiment control center",
+    centerSubtitle: "Agent at the center: drive jobs with natural language and keep full control over every HPC submission, its progress and the recovered artifacts.",
+    recent: "Recent experiments",
+    showManual: "Manual job",
+    hideManual: "Hide manual form",
+    noExperiments: "No experiments yet. Try describing your goal in the agent panel above.",
+    manualTitle: "Manual job configuration",
+    manualSubtitle: "Want full control over the parameters? Fill the form and submit directly, bypassing the agent.",
   },
   jobs: {
     title: "Jobs",
@@ -259,6 +292,9 @@ export const en: TranslationKey = {
     simulationWarning:
       "This job ran in simulation mode; the outputs are not real predictions.",
     detail: "Details",
+    backend: "Submission backend",
+    remoteId: "Cluster job id",
+    jobSpec: "Submitted JobSpec (full transparency)",
   },
   viewer: {
     title: "3D structure viewer",

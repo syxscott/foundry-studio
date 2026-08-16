@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api } from "./api";
+import BackendStatus from "./components/BackendStatus";
 import { SimulationBanner } from "./components/SimulationBanner";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import type { HealthResponse } from "./types/api";
@@ -115,13 +116,16 @@ export default function App() {
             </button>
           </nav>
           <LanguageSwitcher />
+          <span className="ml-1 hidden sm:inline-flex">
+            <BackendStatus info={health?.backend ?? null} />
+          </span>
         </div>
       </header>
 
       <SimulationBanner health={health} />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 animate-fade-in">
-        {route.name === "home" && <HomePage health={health} />}
+        {route.name === "home" && <HomePage health={health} onOpenJob={(id) => navigate({ name: "job", id })} />}
         {route.name === "jobs" && <JobsPage onOpen={(id) => navigate({ name: "job", id })} />}
         {route.name === "job" && (
           <JobDetailPage jobId={route.id} onBack={() => navigate({ name: "jobs" })} />

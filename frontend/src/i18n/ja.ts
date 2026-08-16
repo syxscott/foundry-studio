@@ -19,6 +19,31 @@ export const ja: TranslationKey = {
     simulationMode: "シミュレーションモード",
     unstarted: "未起動",
   },
+  backend: {
+    unknown: "バックエンド不明",
+    ready: "準備完了",
+    notConfigured: "未設定",
+  },
+  agent: {
+    title: "Agent 協働パネル",
+    subtitle: "実験の目標を自然言語で記述すると、Agent が送信可能なジョブ計画に解析します。外部プログラムから Control API で直接呼び出すこともできます。",
+    inputPlaceholder: "例：RFD3 で 80 残基の結合タンパク質を設計、ホットスポット A12/B34 を標的、5 個生成…",
+    parse: "計画を解析",
+    parsing: "解析中…",
+    clear: "クリア",
+    submit: "確認して送信",
+    submitting: "送信中…",
+    planTitle: "解析された計画",
+    plan: {
+      params: "パラメータ",
+      resources: "リソース / スケジューラ",
+      invocation: "呼び出し方法",
+      warnings: "注意",
+      missing: "未充足",
+    },
+    externalTitle: "外部 Agent 接続",
+    externalHint: "外部 LLM はこの UI を介さずにプログラムからジョブを送信できます：",
+  },
   models: {
     rfd3: {
       name: "RFdiffusion3（RFD3）",
@@ -200,6 +225,14 @@ export const ja: TranslationKey = {
       needFile: "モデル {{model}} には少なくとも 1 つの入力ファイルが必要です",
     },
     advancedError: "詳細 JSON の解析に失敗しました: {{detail}}",
+    centerTitle: "実験コンソール",
+    centerSubtitle: "Agent を中心に：自然言語でジョブを駆動し、HPC 上の送信・進捗・成果回収を完全に制御します。",
+    recent: "最近の実験",
+    showManual: "手動でジョブ作成",
+    hideManual: "手動フォームを閉じる",
+    noExperiments: "まだ実験はありません。上の Agent パネルで目標を記述してみてください。",
+    manualTitle: "手動ジョブ設定",
+    manualSubtitle: "パラメータを完全に自分で制御したい場合は、このフォームから直接送信できます（Agent を省略）。",
   },
   jobs: {
     title: "ジョブ一覧",
@@ -259,6 +292,9 @@ export const ja: TranslationKey = {
     simulationWarning:
       "このジョブはシミュレーションモードで実行されました。出力は実際の予測ではありません。",
     detail: "詳細",
+    backend: "送信バックエンド",
+    remoteId: "クラスタジョブ ID",
+    jobSpec: "送信済み JobSpec（完全な透明性）",
   },
   viewer: {
     title: "3D 構造ビューア",

@@ -144,7 +144,16 @@ export function JobDetailPage({
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Meta label={t("jobDetail.model")} value={job.model} mono />
         <Meta label={t("jobDetail.engineMode")} value={job.engine_mode} mono />
-        <Meta label={t("jobDetail.createdAt")} value={new Date(job.created_at).toLocaleString()} />
+        <Meta label={t("jobDetail.backend")} value={job.backend ?? "—"} mono />
+        <Meta
+          label={t("jobDetail.remoteId")}
+          value={job.remote_job_id ?? "—"}
+          mono
+        />
+        <Meta
+          label={t("jobDetail.createdAt")}
+          value={new Date(job.created_at).toLocaleString()}
+        />
         <Meta
           label={t("jobDetail.progress")}
           value={job.progress != null ? `${job.progress}%` : "—"}
@@ -257,6 +266,15 @@ export function JobDetailPage({
           <p className="text-sm text-slate-400">{t("jobDetail.logsEmpty")}</p>
         )}
       </Section>
+
+      {/* Submitted JobSpec — full transparency of what was dispatched */}
+      {job.job_spec && (
+        <Section title={t("jobDetail.jobSpec")}>
+          <pre className="bg-slate-50 border border-surface-border text-xs p-3 rounded-md overflow-auto max-h-72 font-mono whitespace-pre-wrap text-slate-700">
+            {JSON.stringify(job.job_spec, null, 2)}
+          </pre>
+        </Section>
+      )}
 
       {viewUrl && <StructureViewer url={viewUrl} onClose={() => setViewUrl(null)} />}
     </div>

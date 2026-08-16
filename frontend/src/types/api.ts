@@ -32,6 +32,14 @@ export interface CheckpointInfo {
   url?: string | null;
 }
 
+export interface BackendInfo {
+  active_backend: string;
+  scheduler: string;
+  transport: string;
+  configured: boolean;
+  agent_enabled: boolean;
+}
+
 export interface HealthResponse {
   status: string;
   version: string;
@@ -40,8 +48,46 @@ export interface HealthResponse {
   gpu_available: boolean;
   foundry_available: boolean;
   data_dir: string;
+  backend: BackendInfo;
   workers: { model: string; pid: number; alive: boolean; exit_code?: number | null }[];
   message?: string | null;
+}
+
+export interface AgentCapabilities {
+  version: string;
+  backend: BackendInfo;
+  models: {
+    id: string;
+    name: string | null;
+    capabilities: string[];
+    accepted_extensions: string[];
+    param_schema: Record<string, unknown>;
+  }[];
+}
+
+export interface AgentPlan {
+  model: string;
+  name: string;
+  params: Record<string, unknown>;
+  resources: Record<string, unknown>;
+  invocation: Record<string, unknown>;
+  warnings: string[];
+  missing_inputs: string[];
+  resolved_by: string;
+}
+
+export interface AgentChatResponse extends AgentPlan {}
+
+export interface AgentRunPayload {
+  model?: string;
+  message?: string;
+  name?: string;
+  params?: Record<string, unknown>;
+  input_files?: { role: string; filename: string; name?: string }[];
+  resources?: Record<string, unknown>;
+  invocation?: Record<string, unknown>;
+  engine_mode?: string;
+  lang?: string;
 }
 
 export interface OutputFile {
@@ -66,6 +112,11 @@ export interface Job {
   created_at: string;
   started_at?: string | null;
   finished_at?: string | null;
+  // HPC / agent tracking — for correlating a local job with the scheduler job.
+  remote_job_id?: string | null;
+  backend?: string | null;
+  scheduler?: string | null;
+  job_spec?: Record<string, unknown> | null;
   outputs: OutputFile[];
   logs_url?: string | null;
 }

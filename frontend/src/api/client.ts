@@ -1,6 +1,9 @@
 /** Typed fetch client for the foundry-studio API. */
 
 import type {
+  AgentCapabilities,
+  AgentChatResponse,
+  AgentRunPayload,
   ApiErrorBody,
   CheckpointInfo,
   HealthResponse,
@@ -105,4 +108,19 @@ export const api = {
     }
     return (await res.json()) as { job_id: string; uploaded: { role: string; filename: string; name: string }[]; errors: { filename: string; error: string; detail: string }[] };
   },
+
+  // --- Agent surface (Control API) -------------------------------------------
+  agentCapabilities: () => request<AgentCapabilities>("/agent/capabilities"),
+
+  agentChat: (message: string, lang: string) =>
+    request<AgentChatResponse>("/agent/chat", {
+      method: "POST",
+      body: JSON.stringify({ message, lang }),
+    }),
+
+  agentRun: (payload: AgentRunPayload) =>
+    request<Job>("/agent/run", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
