@@ -19,6 +19,150 @@ export const en: TranslationKey = {
     simulationMode: "Simulation mode",
     unstarted: "Not started",
   },
+  models: {
+    rfd3: {
+      name: "RFdiffusion3 (RFD3)",
+      description:
+        "All-atom generative protein design. De-novo backbones, motif scaffolding, binder design, symmetry and more under complex constraints.",
+      cap: {
+        design: "De novo design",
+        scaffold: "Motif scaffolding",
+        binder: "Binder / interaction design",
+        symmetry: "Symmetry",
+        contigs: "Contig specification",
+      },
+      param: {
+        contigs: {
+          title: "Contigs",
+          desc: "Chain/segment specification, e.g. 'A1-100' for a single 100-residue chain, or 'A1-50/B1-50' for a two-chain design.",
+        },
+        n_batches: {
+          title: "Number of designs (batches)",
+          desc: "Number of independent designs to generate.",
+        },
+        hotspots: {
+          title: "Hotspots (optional)",
+          desc: "Residues to design around, e.g. 'A1,A5,A10'. Leave empty to disable.",
+        },
+        diffusion_steps: {
+          title: "Diffusion steps",
+          desc: "Number of denoising steps.",
+        },
+        sampler: {
+          title: "Sampler",
+          desc: "Diffusion sampling strategy.",
+        },
+        symmetry: {
+          title: "Symmetry (optional)",
+          desc: "Symmetry group id, e.g. 'C3', 'D2' or 'tetrahedral'. Leave empty for asymmetric.",
+        },
+        scaffold_dir: {
+          title: "Scaffold dir (optional)",
+          desc: "Path to a directory of CIF scaffolds (server-side). Prefer uploading files via the form.",
+        },
+        seed: {
+          title: "Seed",
+          desc: "Random seed for reproducibility (null = random).",
+        },
+      },
+    },
+    rfd3na: {
+      name: "RFdiffusion3NA (RFD3NA)",
+      description:
+        "Extension of RFdiffusion3 for mixed protein / nucleic-acid design under complex constraints.",
+      cap: {
+        design: "De novo design",
+        nucleic: "Nucleic acid design",
+        symmetry: "Symmetry",
+      },
+      param: {
+        contigs: {
+          title: "Contigs",
+          desc: "Chain specification including nucleic-acid segments, e.g. 'A1-80/D1-20' designs a protein chain A and DNA chain D.",
+        },
+        n_batches: {
+          title: "Number of designs (batches)",
+          desc: "Number of independent designs to generate.",
+        },
+        diffusion_steps: {
+          title: "Diffusion steps",
+          desc: "Number of denoising steps.",
+        },
+        sampler: {
+          title: "Sampler",
+          desc: "Diffusion sampling strategy.",
+        },
+        seed: {
+          title: "Seed",
+          desc: "Random seed for reproducibility (null = random).",
+        },
+      },
+    },
+    rf3: {
+      name: "RosettaFold3 (RF3)",
+      description:
+        "Structure prediction neural network. Predicts all-atom structures from sequences or templates, closing the gap to closed-source AF3.",
+      cap: {
+        prediction: "Structure prediction",
+        complex: "Complex prediction",
+        plddt: "pLDDT confidence",
+      },
+      param: {
+        n_recycles: {
+          title: "Recycles",
+          desc: "Number of structure prediction recycles.",
+        },
+        num_steps: {
+          title: "Diffusion steps",
+          desc: "Number of diffusion steps for refinement.",
+        },
+        dump_trajectories: {
+          title: "Dump trajectories",
+          desc: "Save diffusion trajectories in the output.",
+        },
+        annotate_plddt: {
+          title: "Annotate pLDDT in B-factor",
+          desc: "Write per-residue pLDDT into the B-factor column.",
+        },
+        seed: {
+          title: "Seed",
+          desc: "Random seed for reproducibility (null = random).",
+        },
+      },
+    },
+    mpnn: {
+      name: "ProteinMPNN / LigandMPNN",
+      description:
+        "Inverse folding: designs amino-acid sequences that fold into a given backbone structure, under user-defined constraints.",
+      cap: {
+        seq_design: "Sequence design",
+        fixed_res: "Fixed residues",
+        ligand: "Ligand-aware design",
+      },
+      param: {
+        model_type: {
+          title: "Model variant",
+          desc: "Choose the ProteinMPNN or LigandMPNN weights.",
+        },
+        number_of_batches: {
+          title: "Number of sequences",
+          desc: "Number of sequences to sample per input structure.",
+        },
+        temperature: {
+          title: "Temperature",
+          desc: "Sampling temperature (lower = more deterministic).",
+        },
+        batch_size: {
+          title: "Batch size",
+          desc: "Structures processed per forward pass.",
+        },
+        seed: {
+          title: "Seed",
+          desc: "Random seed for reproducibility (null = random).",
+        },
+      },
+    },
+  },
   home: {
     title: "Create a design job",
     subtitle: "Pick a model and configure parameters; the job runs asynchronously in the background",
@@ -165,6 +309,24 @@ export const en: TranslationKey = {
     cleanFailed: "Cleanup failed",
     noCheckpoints: "No checkpoints registered",
     installNote: "Checkpoints are installed to {{dir}} (shared with the Foundry CLI).",
+  },
+  checkpoints: {
+    rfd3: "RFdiffusion3 checkpoint",
+    rfd3na: "RFdiffusion3NA checkpoint",
+    rf3: "latest RF3 checkpoint trained with data until 1/2024 (expect best performance)",
+    proteinmpnn: "ProteinMPNN checkpoint",
+    ligandmpnn: "LigandMPNN checkpoint",
+    solublempnn: "SolubleMPNN checkpoint",
+    rf3_preprint_921: "RF3 preprint checkpoint trained with data until 9/2021",
+    rf3_preprint_124: "RF3 preprint checkpoint trained with data until 1/2024",
+  },
+  fileRoles: {
+    structure: "structure",
+    input: "input",
+    scaffold: "scaffold",
+    motif: "motif",
+    sequence: "sequence",
+    fasta: "sequence",
   },
   about: {
     title: "About foundry-studio",

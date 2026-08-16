@@ -23,8 +23,10 @@ interface FormField {
   type: ParamType;
   enumValues: string[] | null;
   title: string;
+  titleKey?: string;
   default: unknown;
   description: string;
+  descriptionKey?: string;
   required?: boolean;
 }
 
@@ -39,8 +41,10 @@ function collectFields(paramSchema: Record<string, unknown>): FormField[] {
       type: schemaType(schema),
       enumValues: schemaEnum(schema),
       title: (schema.title as string) ?? key,
+      titleKey: (schema.title_key as string) || undefined,
       default: schema.default,
       description: (schema.description as string) ?? "",
+      descriptionKey: (schema.description_key as string) || undefined,
       required: required.includes(key),
     };
   });
@@ -56,9 +60,16 @@ function FieldInput({
   onChange: (v: unknown) => void;
 }) {
   const { t } = useTranslation();
+  const titleText = field.titleKey
+    ? t(field.titleKey, { defaultValue: field.title })
+    : field.title;
+  const descText =
+    field.descriptionKey && field.description
+      ? t(field.descriptionKey, { defaultValue: field.description })
+      : field.description;
   const label = (
     <label className="block text-sm font-medium text-slate-700 mb-1">
-      {t(field.title) !== field.title ? t(field.title) : field.title}
+      {titleText}
       {field.required && <span className="text-red-500 ml-0.5">*</span>}
       {!field.required && (
         <span className="text-slate-400 text-xs font-normal ml-1.5">({t("common.optional")})</span>
@@ -81,8 +92,8 @@ function FieldInput({
             </option>
           ))}
         </select>
-        {field.description && (
-          <p className="text-xs text-slate-400 mt-1">{t(field.description) !== field.description ? t(field.description) : field.description}</p>
+        {descText && (
+          <p className="text-xs text-slate-400 mt-1">{descText}</p>
         )}
       </div>
     );
@@ -97,7 +108,7 @@ function FieldInput({
           onChange={(e) => onChange(e.target.checked)}
           className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
         />
-        <span className="text-sm text-slate-600">{field.title}</span>
+        <span className="text-sm text-slate-600">{titleText}</span>
       </div>
     );
   }
@@ -124,8 +135,8 @@ function FieldInput({
           }}
           className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
         />
-        {field.description && (
-          <p className="text-xs text-slate-400 mt-1">{t(field.description) !== field.description ? t(field.description) : field.description}</p>
+        {descText && (
+          <p className="text-xs text-slate-400 mt-1">{descText}</p>
         )}
       </div>
     );
@@ -141,8 +152,8 @@ function FieldInput({
         onChange={(e) => onChange(e.target.value)}
         className="w-full border border-surface-border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500"
       />
-      {field.description && (
-        <p className="text-xs text-slate-400 mt-1">{t(field.description) !== field.description ? t(field.description) : field.description}</p>
+      {descText && (
+        <p className="text-xs text-slate-400 mt-1">{descText}</p>
       )}
     </div>
   );
@@ -279,7 +290,9 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-800 text-sm">{m.name}</span>
+              <span className="font-medium text-slate-800 text-sm">
+                {m.name_key ? t(m.name_key, { defaultValue: m.name }) : m.name}
+              </span>
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded ${
                   m.checkpoint_state === "installed"
@@ -292,9 +305,21 @@ export function HomePage({ health }: { health: HealthResponse | null }) {
             </div>
             {selected === m.id && (
               <div className="mt-2 text-xs text-slate-500 space-y-1">
-                <p>{t("home.modelDescription")}: {m.description}</p>
                 <p>
-                  {t("home.capabilities")}: {m.capabilities.join(", ")}
+                  {t("home.modelDescription")}:{" "}
+                  {m.description_key
+                    ? t(m.description_key, { defaultValue: m.description })
+                    : m.description}
+                </p>
+                <p>
+                  {t("home.capabilities")}:{" "}
+                  {m.capabilities
+                    .map((c, i) =>
+                      m.capability_keys?.[i]
+                        ? t(m.capability_keys[i], { defaultValue: c })
+                        : c,
+                    )
+                    .join(", ")}
                 </p>
                 <p>
                   {t("jobDetail.engineMode")}:{" "}

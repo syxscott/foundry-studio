@@ -194,7 +194,7 @@ export function JobDetailPage({
           <ul className="text-sm text-slate-600 space-y-1">
             {job.input_files.map((f) => (
               <li key={f.filename} className="font-mono text-xs">
-                [{f.role}] {f.filename}
+                [{t(`fileRoles.${f.role}`, { defaultValue: f.role })}] {f.filename}
               </li>
             ))}
           </ul>

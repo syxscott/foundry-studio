@@ -70,8 +70,11 @@ def list_models(
             ModelInfo(
                 id=model_id,
                 name=info["name"],
+                name_key=info.get("name_key", ""),
                 description=info["description"],
+                description_key=info.get("description_key", ""),
                 capabilities=info.get("capabilities", []),
+                capability_keys=info.get("capability_keys", []),
                 param_schema=info.get("param_schema", {}),
                 param_defaults=info.get("param_defaults", {}),
                 accepted_extensions=info.get("accepted_extensions", []),

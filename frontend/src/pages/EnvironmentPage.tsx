@@ -123,7 +123,9 @@ export function EnvironmentPage() {
                 <tr key={c.name} className="border-t border-surface-border">
                   <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{c.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{c.filename}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs max-w-xs">{c.description}</td>
+                  <td className="px-4 py-3 text-slate-500 text-xs max-w-xs">
+                    {t(`checkpoints.${c.name}`, { defaultValue: c.description })}
+                  </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{formatSize(c.size_bytes, t)}</td>
                   <td className="px-4 py-3">
                     {c.installed ? (

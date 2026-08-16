@@ -19,6 +19,150 @@ export const ja: TranslationKey = {
     simulationMode: "シミュレーションモード",
     unstarted: "未起動",
   },
+  models: {
+    rfd3: {
+      name: "RFdiffusion3（RFD3）",
+      description:
+        "全原子生成型タンパク質設計。新規骨格設計、モチーフ足場設計、結合タンパク質設計、対称設計など、複雑な制約下での生成タスクに対応します。",
+      cap: {
+        design: "新規タンパク質設計",
+        scaffold: "モチーフ足場設計",
+        binder: "結合タンパク質 / 相互作用設計",
+        symmetry: "対称設計",
+        contigs: "Contigs 仕様",
+      },
+      param: {
+        contigs: {
+          title: "Contigs（鎖・断片仕様）",
+          desc: "鎖/断片の仕様。例:「A1-100」は 100 残基の単鎖、「A1-50/B1-50」は二鎖設計。",
+        },
+        n_batches: {
+          title: "設計数（バッチ数）",
+          desc: "生成する独立した設計の数。",
+        },
+        hotspots: {
+          title: "ホットスポット（任意）",
+          desc: "指定残基を中心に設計します。例:「A1,A5,A10」。空欄で無効。",
+        },
+        diffusion_steps: {
+          title: "拡散ステップ数",
+          desc: "ノイズ除去ステップ数。",
+        },
+        sampler: {
+          title: "サンプラー",
+          desc: "拡散サンプリング戦略。",
+        },
+        symmetry: {
+          title: "対称性（任意）",
+          desc: "対称群 ID。例:「C3」「D2」「tetrahedral」。空欄で非対称。",
+        },
+        scaffold_dir: {
+          title: "足場ディレクトリ（任意）",
+          desc: "サーバー側の CIF 足場ディレクトリ。フォームからのアップロードを推奨。",
+        },
+        seed: {
+          title: "シード",
+          desc: "再現用の乱数シード（null = ランダム）。",
+        },
+      },
+    },
+    rfd3na: {
+      name: "RFdiffusion3NA（RFD3NA）",
+      description:
+        "RFdiffusion3 の拡張版。複雑な制約下でタンパク質 / 核酸の混合設計をサポートします。",
+      cap: {
+        design: "新規タンパク質設計",
+        nucleic: "核酸設計",
+        symmetry: "対称設計",
+      },
+      param: {
+        contigs: {
+          title: "Contigs（鎖・断片仕様）",
+          desc: "核酸断片を含む鎖仕様。例:「A1-80/D1-20」はタンパク質鎖 A と DNA 鎖 D を設計。",
+        },
+        n_batches: {
+          title: "設計数（バッチ数）",
+          desc: "生成する独立した設計の数。",
+        },
+        diffusion_steps: {
+          title: "拡散ステップ数",
+          desc: "ノイズ除去ステップ数。",
+        },
+        sampler: {
+          title: "サンプラー",
+          desc: "拡散サンプリング戦略。",
+        },
+        seed: {
+          title: "シード",
+          desc: "再現用の乱数シード（null = ランダム）。",
+        },
+      },
+    },
+    rf3: {
+      name: "RosettaFold3（RF3）",
+      description:
+        "構造予測ニューラルネットワーク。配列やテンプレートから全原子構造を予測。閉鎖型 AF-3 のオープンソース代替。",
+      cap: {
+        prediction: "構造予測",
+        complex: "複合体予測",
+        plddt: "pLDDT 信頼度",
+      },
+      param: {
+        n_recycles: {
+          title: "リサイクル数",
+          desc: "構造予測のリサイクル回数。",
+        },
+        num_steps: {
+          title: "拡散ステップ数",
+          desc: "精密化の拡散ステップ数。",
+        },
+        dump_trajectories: {
+          title: "軌跡を保存",
+          desc: "出力に拡散軌跡を保存します。",
+        },
+        annotate_plddt: {
+          title: "pLDDT を B 因子に書き込み",
+          desc: "残基ごとの pLDDT を B 因子列に書き込みます。",
+        },
+        seed: {
+          title: "シード",
+          desc: "再現用の乱数シード（null = ランダム）。",
+        },
+      },
+    },
+    mpnn: {
+      name: "ProteinMPNN / LigandMPNN",
+      description:
+        "逆フォールディング: 与えられた骨格構造に折りたたまるアミノ酸配列を設計し、ユーザー定義の制約にも対応。",
+      cap: {
+        seq_design: "配列設計",
+        fixed_res: "固定残基",
+        ligand: "リガンド対応設計",
+      },
+      param: {
+        model_type: {
+          title: "モデル変種",
+          desc: "ProteinMPNN または LigandMPNN の重みを選択。",
+        },
+        number_of_batches: {
+          title: "配列数",
+          desc: "入力構造あたりにサンプリングする配列数。",
+        },
+        temperature: {
+          title: "温度",
+          desc: "サンプリング温度（低いほど決定的）。",
+        },
+        batch_size: {
+          title: "バッチサイズ",
+          desc: "1 回の前向き処理あたりの構造数。",
+        },
+        seed: {
+          title: "シード",
+          desc: "再現用の乱数シード（null = ランダム）。",
+        },
+      },
+    },
+  },
   home: {
     title: "設計ジョブを作成",
     subtitle: "モデルを選択してパラメータを設定。ジョブはバックグラウンドで非同期実行されます",
@@ -165,6 +309,24 @@ export const ja: TranslationKey = {
     cleanFailed: "クリーンアップに失敗しました",
     noCheckpoints: "チェックポイントが登録されていません",
     installNote: "重みは {{dir}} にインストールされます（Foundry CLI と共有）。",
+  },
+  checkpoints: {
+    rfd3: "RFdiffusion3 チェックポイント",
+    rfd3na: "RFdiffusion3NA チェックポイント",
+    rf3: "最新の RF3 チェックポイント（2024 年 1 月までのデータで学習、最良の性能を期待）",
+    proteinmpnn: "ProteinMPNN チェックポイント",
+    ligandmpnn: "LigandMPNN チェックポイント",
+    solublempnn: "SolubleMPNN チェックポイント",
+    rf3_preprint_921: "RF3 プレプリント版チェックポイント（2021 年 9 月までのデータ）",
+    rf3_preprint_124: "RF3 プレプリント版チェックポイント（2024 年 1 月までのデータ）",
+  },
+  fileRoles: {
+    structure: "構造",
+    input: "入力",
+    scaffold: "足場",
+    motif: "モチーフ",
+    sequence: "配列",
+    fasta: "配列",
   },
   about: {
     title: "foundry-studio について",

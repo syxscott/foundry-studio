@@ -20,9 +20,13 @@ class ModelInfo(BaseModel):
 
     id: str
     name: str
+    name_key: str = ""
     description: str
+    description_key: str = ""
     # Human-readable capability list, e.g. ["de-novo design", "motif scaffolding"]
     capabilities: list[str] = Field(default_factory=list)
+    # Parallel i18n keys for each capability entry.
+    capability_keys: list[str] = Field(default_factory=list)
     # Parameter schema used by the frontend to render the task form.
     param_schema: dict[str, Any] = Field(default_factory=dict)
     # Optional per-parameter defaults exposed to the UI.

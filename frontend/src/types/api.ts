@@ -7,8 +7,11 @@ export type EngineMode = "auto" | "real" | "simulation";
 export interface ModelInfo {
   id: ModelId;
   name: string;
+  name_key?: string;
   description: string;
+  description_key?: string;
   capabilities: string[];
+  capability_keys?: string[];
   param_schema: Record<string, unknown>;
   param_defaults: Record<string, unknown>;
   accepted_extensions: string[];

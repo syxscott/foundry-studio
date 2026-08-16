@@ -17,6 +17,150 @@ export const zh = {
     simulationMode: "模拟模式",
     unstarted: "未启动",
   },
+  models: {
+    rfd3: {
+      name: "RFdiffusion3（RFD3）",
+      description:
+        "全原子生成式蛋白质设计。可用于全新骨架设计、模体支架设计、结合蛋白设计、对称设计等复杂约束下的生成任务。",
+      cap: {
+        design: "全新蛋白质设计",
+        scaffold: "模体支架设计",
+        binder: "结合蛋白 / 相互作用设计",
+        symmetry: "对称设计",
+        contigs: "Contigs 片段规格",
+      },
+      param: {
+        contigs: {
+          title: "Contigs（链片段规格）",
+          desc: "链/片段规格，如「A1-100」表示设计一条 100 残基的单链；「A1-50/B1-50」表示双链设计。",
+        },
+        n_batches: {
+          title: "设计数量（批次）",
+          desc: "要生成的独立设计数量。",
+        },
+        hotspots: {
+          title: "热点残基（可选）",
+          desc: "围绕指定残基进行设计，如「A1,A5,A10」。留空则关闭。",
+        },
+        diffusion_steps: {
+          title: "扩散步数",
+          desc: "去噪步数。",
+        },
+        sampler: {
+          title: "采样器",
+          desc: "扩散采样策略。",
+        },
+        symmetry: {
+          title: "对称性（可选）",
+          desc: "对称群 ID，如「C3」「D2」或「tetrahedral」。留空为不对称。",
+        },
+        scaffold_dir: {
+          title: "骨架目录（可选）",
+          desc: "服务端 CIF 骨架目录路径。建议直接通过表单上传文件。",
+        },
+        seed: {
+          title: "随机种子",
+          desc: "随机种子，用于复现（null = 随机）。",
+        },
+      },
+    },
+    rfd3na: {
+      name: "RFdiffusion3NA（RFD3NA）",
+      description:
+        "RFdiffusion3 的扩展版本，支持在复杂约束下进行蛋白质 / 核酸混合设计。",
+      cap: {
+        design: "全新蛋白质设计",
+        nucleic: "核酸设计",
+        symmetry: "对称设计",
+      },
+      param: {
+        contigs: {
+          title: "Contigs（链片段规格）",
+          desc: "包含核酸片段的链规格，如「A1-80/D1-20」表示设计蛋白链 A 和 DNA 链 D。",
+        },
+        n_batches: {
+          title: "设计数量（批次）",
+          desc: "要生成的独立设计数量。",
+        },
+        diffusion_steps: {
+          title: "扩散步数",
+          desc: "去噪步数。",
+        },
+        sampler: {
+          title: "采样器",
+          desc: "扩散采样策略。",
+        },
+        seed: {
+          title: "随机种子",
+          desc: "随机种子，用于复现（null = 随机）。",
+        },
+      },
+    },
+    rf3: {
+      name: "RosettaFold3（RF3）",
+      description:
+        "结构预测神经网络。根据序列或模板预测全原子结构，是闭源 AF-3 的开源替代。",
+      cap: {
+        prediction: "结构预测",
+        complex: "复合物预测",
+        plddt: "pLDDT 置信度",
+      },
+      param: {
+        n_recycles: {
+          title: "循环次数（Recycles）",
+          desc: "结构预测循环次数。",
+        },
+        num_steps: {
+          title: "扩散步数",
+          desc: "精化阶段的扩散步数。",
+        },
+        dump_trajectories: {
+          title: "保存扩散轨迹",
+          desc: "在输出中保存扩散轨迹。",
+        },
+        annotate_plddt: {
+          title: "将 pLDDT 写入 B 因子",
+          desc: "将每个残基的 pLDDT 写入 B 因子列。",
+        },
+        seed: {
+          title: "随机种子",
+          desc: "随机种子，用于复现（null = 随机）。",
+        },
+      },
+    },
+    mpnn: {
+      name: "ProteinMPNN / LigandMPNN",
+      description:
+        "逆折叠：为给定的蛋白质骨架设计能折叠成该形状的氨基酸序列，并支持用户自定义约束。",
+      cap: {
+        seq_design: "序列设计",
+        fixed_res: "固定残基",
+        ligand: "配体感知设计",
+      },
+      param: {
+        model_type: {
+          title: "模型变体",
+          desc: "选择 ProteinMPNN 或 LigandMPNN 权重。",
+        },
+        number_of_batches: {
+          title: "序列数量",
+          desc: "每个输入结构采样的序列数量。",
+        },
+        temperature: {
+          title: "温度",
+          desc: "采样温度（越低越确定性）。",
+        },
+        batch_size: {
+          title: "批大小",
+          desc: "每次前向处理的结构数量。",
+        },
+        seed: {
+          title: "随机种子",
+          desc: "随机种子，用于复现（null = 随机）。",
+        },
+      },
+    },
+  },
   home: {
     title: "新建设计任务",
     subtitle: "选择模型并配置参数，任务将在后台异步执行",
@@ -162,6 +306,24 @@ export const zh = {
     cleanFailed: "清理失败",
     noCheckpoints: "暂无权重记录",
     installNote: "权重默认安装到 {{dir}}，与 Foundry CLI 共享。",
+  },
+  checkpoints: {
+    rfd3: "RFdiffusion3 权重",
+    rfd3na: "RFdiffusion3NA 权重",
+    rf3: "最新 RF3 权重（训练数据截至 2024 年 1 月，性能最佳）",
+    proteinmpnn: "ProteinMPNN 权重",
+    ligandmpnn: "LigandMPNN 权重",
+    solublempnn: "SolubleMPNN 权重",
+    rf3_preprint_921: "RF3 预印本权重（训练数据截至 2021 年 9 月）",
+    rf3_preprint_124: "RF3 预印本权重（训练数据截至 2024 年 1 月）",
+  },
+  fileRoles: {
+    structure: "结构",
+    input: "输入",
+    scaffold: "骨架",
+    motif: "模体",
+    sequence: "序列",
+    fasta: "序列",
   },
   about: {
     title: "关于 foundry-studio",
