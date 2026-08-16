@@ -1,8 +1,0 @@
-{
-  "simulated": true,
-  "model": "rfd3",
-  "contigs": "A1-60",
-  "n_batches": 1,
-  "diffusion_steps": 50,
-  "note": "Simulation output - not a real prediction"
-}

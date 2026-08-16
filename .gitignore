@@ -29,3 +29,5 @@ Thumbs.db
 *.timestamp-*.mjs
 *.timestamp-*.mjs
 *.tsbuildinfo
+.data-live/
+*.log
