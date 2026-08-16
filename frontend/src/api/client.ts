@@ -85,6 +85,8 @@ export const api = {
   getLogs: (id: string) =>
     request<{ job_id: string; logs: string }>(`/jobs/${id}/logs`),
 
+  downloadJobZip: (id: string) => `${BASE}/jobs/${id}/download-zip`,
+
   uploadFiles: async (
     jobId: string,
     files: File[],

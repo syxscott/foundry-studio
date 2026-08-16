@@ -12,7 +12,6 @@ Run directly with::
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import signal
@@ -23,7 +22,6 @@ from pathlib import Path
 from foundry_studio.config import Settings, get_settings
 from foundry_studio.db import StudioDB
 from foundry_studio.engines.registry import resolve_engine
-from foundry_studio.i18n import localize
 
 logger = logging.getLogger("foundry_studio.worker")
 

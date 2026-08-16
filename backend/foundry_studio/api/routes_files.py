@@ -8,8 +8,8 @@ directory ``data/jobs/{job_id}/`` and referenced in the job's
 
 from __future__ import annotations
 
+import json
 import re
-import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -40,6 +40,33 @@ def _validate_filename(filename: str) -> str:
         # Strip path separators / control chars defensively.
         name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
     return name
+
+
+def _resolve_job_file(job_dir: Path, rel_path: str) -> Path:
+    """Resolve a (possibly nested) relative path inside ``job_dir`` safely.
+
+    Output listings use ``rglob`` relative paths that may contain subdirectories
+    (e.g. ``traj/model_0.cif``), so downloads must keep the nested structure
+    while still refusing any path traversal.
+    """
+    parts = [
+        p
+        for p in rel_path.replace("\\", "/").split("/")
+        if p not in ("", ".", "..")
+    ]
+    if not parts:
+        raise ApiError(
+            "error.file_not_found", status_code=404, params={"path": rel_path}
+        )
+    candidate = job_dir.resolve()
+    for part in parts:
+        candidate = candidate / _validate_filename(part)
+    candidate = candidate.resolve()
+    if not candidate.is_relative_to(job_dir.resolve()):
+        raise ApiError(
+            "error.file_not_found", status_code=404, params={"path": rel_path}
+        )
+    return candidate
 
 
 @router.post("/{job_id}/files", response_model=dict)
@@ -84,11 +111,23 @@ async def upload_files(
             continue
 
         dest = job_dir / filename
+        total = 0
         try:
             with open(dest, "wb") as fh:
                 while chunk := await f.read(1024 * 1024):
+                    total += len(chunk)
+                    if total > MAX_UPLOAD_BYTES:
+                        raise ApiError(
+                            "error.upload_failed",
+                            status_code=413,
+                            params={"detail": f"file exceeds {MAX_UPLOAD_BYTES // (1024**3)} GiB limit"},
+                        )
                     fh.write(chunk)
+        except ApiError:
+            dest.unlink(missing_ok=True)
+            raise
         except Exception as exc:  # noqa: BLE001
+            dest.unlink(missing_ok=True)
             errors.append(
                 {
                     "filename": filename,
@@ -107,18 +146,17 @@ async def upload_files(
         )
 
     if uploaded:
-        existing = json_loads(job.get("input_files_json") or "[]")
+        existing = _json_loads(job.get("input_files_json") or "[]")
         existing = [e for e in existing if e.get("filename") not in {u["filename"] for u in uploaded}]
         db.set_input_files(job_id, existing + uploaded)
 
     return {"job_id": job_id, "uploaded": uploaded, "errors": errors}
 
 
-def json_loads(text: str):
-    import json
-
+def _json_loads(text: str) -> list:
     try:
-        return json.loads(text)
+        data = json.loads(text)
+        return data if isinstance(data, list) else []
     except json.JSONDecodeError:
         return []
 
@@ -135,16 +173,8 @@ def download_file(
         raise ApiError(
             "error.job_not_found", status_code=404, params={"job_id": job_id}
         )
-    safe_name = _validate_filename(filename)
     job_dir = settings.resolved_data_dir() / "jobs" / job_id
-    path = (job_dir / safe_name).resolve()
-    # Path traversal guard: must stay inside the job directory.
-    if not path.is_relative_to(job_dir.resolve()):
-        raise ApiError(
-            "error.file_not_found",
-            status_code=404,
-            params={"path": filename},
-        )
+    path = _resolve_job_file(job_dir, filename)
     if not path.is_file():
         raise ApiError(
             "error.file_not_found",
@@ -153,6 +183,49 @@ def download_file(
         )
     media_type = _media_type(path.name)
     return FileResponse(path, media_type=media_type, filename=path.name)
+
+
+@router.get("/{job_id}/download-zip")
+def download_job_zip(
+    job_id: str,
+    settings: Settings = Depends(get_settings),
+    db: StudioDB = Depends(get_db),
+) -> FileResponse:
+    """Zip all job outputs into a single archive for download."""
+    import zipfile
+
+    job = db.get_job(job_id)
+    if job is None:
+        raise ApiError(
+            "error.job_not_found", status_code=404, params={"job_id": job_id}
+        )
+    outputs_dir = job.get("outputs_dir")
+    if not outputs_dir or not Path(outputs_dir).is_dir():
+        raise ApiError(
+            "error.file_not_found",
+            status_code=404,
+            params={"path": f"outputs of {job_id}"},
+        )
+    out_root = Path(outputs_dir)
+    files = [p for p in out_root.rglob("*") if p.is_file()]
+    if not files:
+        raise ApiError(
+            "error.file_not_found",
+            status_code=404,
+            params={"path": f"outputs of {job_id}"},
+        )
+
+    tmp_dir = settings.resolved_data_dir() / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = tmp_dir / f"{job_id}_outputs.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for p in files:
+            zf.write(p, arcname=p.relative_to(out_root).as_posix())
+    return FileResponse(
+        zip_path,
+        media_type="application/zip",
+        filename=f"{job_id}_outputs.zip",
+    )
 
 
 def _media_type(name: str) -> str:

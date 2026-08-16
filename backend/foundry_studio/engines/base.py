@@ -9,9 +9,8 @@ separation used upstream in Foundry.
 from __future__ import annotations
 
 import abc
+import json
 import logging
-import shutil
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -129,6 +128,24 @@ class BaseEngine(abc.ABC):
         d = self.job_dir(job)
         d.mkdir(parents=True, exist_ok=True)
         return d
+
+    def job_input_files(
+        self, job: dict[str, Any], roles: set[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Parse the job's uploaded-file descriptors, optionally filtered by role.
+
+        Uploaded files are stored in the job's ``input_files_json`` column (not
+        inside ``params_json``); engines must read them from here.
+        """
+        try:
+            files = json.loads(job.get("input_files_json") or "[]")
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(files, list):
+            return []
+        if roles is None:
+            return files
+        return [f for f in files if f.get("role") in roles]
 
 
 def _kind_for_path(rel: str) -> str:

@@ -129,6 +129,7 @@ class WorkerManager:
             self._stop.wait(15)
 
     def _monitor_once(self) -> None:
+        now = time.time()
         for model in ("rfd3", "rfd3na", "rf3", "mpnn"):
             with self._lock:
                 proc = self.processes.get(model)
@@ -145,6 +146,38 @@ class WorkerManager:
                 if self.settings.worker_autostart and self._has_queued_jobs(model):
                     logger.warning("Worker %s died; respawning", model)
                     self.ensure_worker(model)
+                continue
+
+            # Heartbeat staleness: the process is alive but not reporting —
+            # likely hung on a job. Restart it and requeue its running job.
+            worker = self.db.get_worker(model)
+            if worker is not None and worker.get("heartbeat_at"):
+                try:
+                    last_beat = time.mktime(
+                        time.strptime(worker["heartbeat_at"], "%Y-%m-%dT%H:%M:%SZ")
+                    )
+                except (ValueError, OverflowError):
+                    last_beat = 0.0
+                if now - last_beat > HEARTBEAT_STALE_SECONDS:
+                    logger.warning(
+                        "Worker %s heartbeat stale (%.0fs); restarting",
+                        model,
+                        now - last_beat,
+                    )
+                    try:
+                        proc.terminate()
+                        proc.wait(timeout=5)
+                    except Exception:  # noqa: BLE001
+                        try:
+                            proc.kill()
+                        except Exception:  # noqa: BLE001
+                            pass
+                    with self._lock:
+                        self.processes.pop(model, None)
+                    self.db.requeue_stale_running(stale_seconds=HEARTBEAT_STALE_SECONDS)
+                    self.db.mark_worker_stopped(model)
+                    if self.settings.worker_autostart:
+                        self.ensure_worker(model)
 
     def _has_queued_jobs(self, model: str) -> bool:
         try:

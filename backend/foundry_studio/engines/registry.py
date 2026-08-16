@@ -12,14 +12,13 @@ Resolution logic (``engine_mode`` setting + per-model availability):
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from foundry_studio.db import StudioDB
 from foundry_studio.engines.base import BaseEngine
 from foundry_studio.engines.mpnn import MPNNEngine
+from foundry_studio.engines.rf3 import RF3Engine
 from foundry_studio.engines.rfd3 import RFD3Engine
 from foundry_studio.engines.rfd3na import RFD3NAEngine
-from foundry_studio.engines.rf3 import RF3Engine
 from foundry_studio.engines.simulation import SimulationEngine
 
 _REAL_ENGINES: dict[str, type[BaseEngine]] = {

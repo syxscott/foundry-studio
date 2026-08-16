@@ -15,11 +15,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-from foundry_studio.engines.base import BaseEngine, EngineResult, OutputFile
+from foundry_studio.engines.base import BaseEngine, EngineResult
 from foundry_studio.engines.checkpoints import model_checkpoint_state
 
 
-def _build_design_json(params: dict[str, Any], job_dir: Path) -> Path:
+def _build_design_json(
+    params: dict[str, Any], job_dir: Path, input_files: list[dict[str, Any]]
+) -> Path:
     """Write the design specification JSON consumed by RFD3."""
     spec: dict[str, Any] = {}
 
@@ -40,8 +42,11 @@ def _build_design_json(params: dict[str, Any], job_dir: Path) -> Path:
         spec["length"] = length
 
     # Reference uploaded scaffold/motif files as design inputs.
-    input_files = params.get("_input_files", [])
-    cif_like = [f["filename"] for f in input_files if f.get("role") in ("scaffold", "motif", "input")]
+    cif_like = [
+        f["filename"]
+        for f in input_files
+        if f.get("role") in ("scaffold", "motif", "input")
+    ]
     if cif_like:
         spec["input"] = str(job_dir / cif_like[0])
 
@@ -60,7 +65,10 @@ class RFD3Engine(BaseEngine):
     model_id = "rfd3"
 
     def _initialize(self) -> None:
-        from rfd3.engine import RFD3InferenceConfig, RFD3InferenceEngine  # type: ignore[import-not-found]
+        from rfd3.engine import (  # type: ignore[import-not-found]
+            RFD3InferenceConfig,
+            RFD3InferenceEngine,
+        )
 
         ckpt_state = model_checkpoint_state("rfd3")
         ckpt = ckpt_state["path"] or "rfd3"
@@ -76,7 +84,8 @@ class RFD3Engine(BaseEngine):
     def _run(self, job: dict[str, Any]) -> EngineResult:
         params = json.loads(job.get("params_json") or "{}")
         job_dir = self.ensure_job_dir(job)
-        json_path = _build_design_json(params, job_dir)
+        input_files = self.job_input_files(job)
+        json_path = _build_design_json(params, job_dir, input_files)
 
         n_batches = int(params.get("n_batches") or 1)
         sampler = str(params.get("sampler") or "default")

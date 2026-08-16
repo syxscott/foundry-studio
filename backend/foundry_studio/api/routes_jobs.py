@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from pathlib import Path
 from typing import Any
 
@@ -17,16 +16,13 @@ from foundry_studio.config import Settings
 from foundry_studio.db import StudioDB
 from foundry_studio.engines import models as model_catalog
 from foundry_studio.engines.base import tail_text
-from foundry_studio.engines.registry import (
-    engine_modes_for,
-    resolve_engine,
-)
+from foundry_studio.engines.registry import resolve_engine
 from foundry_studio.schemas import (
+    JOB_STATUSES,
     CancelResponse,
     JobCreate,
     JobList,
     JobRead,
-    JOB_STATUSES,
 )
 from foundry_studio.workers.manager import WorkerManager
 
@@ -354,7 +350,7 @@ async def job_logs_stream(
                 if p.is_file():
                     size = p.stat().st_size
                     if size > last_size:
-                        with open(p, "r", encoding="utf-8", errors="replace") as fh:
+                        with open(p, encoding="utf-8", errors="replace") as fh:
                             fh.seek(last_size)
                             chunk = fh.read()
                         if chunk:
@@ -364,7 +360,7 @@ async def job_logs_stream(
                 if current and current["status"] in terminal:
                     # Final flush.
                     if p.is_file() and p.stat().st_size > last_size:
-                        with open(p, "r", encoding="utf-8", errors="replace") as fh:
+                        with open(p, encoding="utf-8", errors="replace") as fh:
                             fh.seek(last_size)
                             chunk = fh.read()
                         if chunk:

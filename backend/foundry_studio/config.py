@@ -6,11 +6,22 @@ All settings can be overridden with environment variables prefixed by
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_DATA_DIR = Path.home() / ".foundry-studio"
+
+
+def _env_file_path() -> str:
+    """Env file path: honour an explicit FOUNDRY_STUDIO_ENV_FILE override,
+    otherwise fall back to the local ``.env`` (if present)."""
+    explicit = os.environ.get("FOUNDRY_STUDIO_ENV_FILE")
+    if explicit:
+        return explicit
+    local = Path.cwd() / ".env"
+    return str(local) if local.is_file() else ""
 
 
 class Settings(BaseSettings):
@@ -19,7 +30,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="FOUNDRY_STUDIO_",
-        env_file=".env",
+        env_file=_env_file_path(),
         env_file_encoding="utf-8",
         extra="ignore",
     )

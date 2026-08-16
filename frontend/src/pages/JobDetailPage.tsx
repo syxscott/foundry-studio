@@ -86,14 +86,11 @@ export function JobDetailPage({
     }
   };
 
-  const downloadAll = async () => {
-    const outputs = job?.outputs ?? [];
-    if (outputs.length === 0) return;
-    // Download each file; for simplicity the first CIF is the primary output.
-    const a = document.createElement("a");
-    a.href = outputs[0].url;
-    a.download = outputs[0].name;
-    a.click();
+  const downloadAll = () => {
+    if (!job || job.outputs.length === 0) return;
+    // The backend zips every output; Content-Disposition: attachment triggers
+    // the browser download.
+    window.location.href = api.downloadJobZip(job.id);
   };
 
   if (notFound) {

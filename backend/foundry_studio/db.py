@@ -14,9 +14,10 @@ import sqlite3
 import threading
 import time
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 SCHEMA_VERSION = 1
 
@@ -31,7 +32,7 @@ STATUS_CANCELED = "canceled"
 TERMINAL_STATUSES = {STATUS_SUCCEEDED, STATUS_FAILED, STATUS_CANCELED}
 ACTIVE_STATUSES = {STATUS_QUEUED, STATUS_RUNNING}
 
-_SCHEMA_SQL = f"""
+_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL
 );
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     model TEXT NOT NULL,
     name TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL,
-    params_json TEXT NOT NULL DEFAULT '{{}}',
+    params_json TEXT NOT NULL DEFAULT '{}',
     input_files_json TEXT NOT NULL DEFAULT '[]',
     engine_mode TEXT NOT NULL DEFAULT 'auto',
     progress INTEGER,
@@ -167,22 +168,25 @@ class StudioDB:
     def claim_next_job(self, model: str) -> dict[str, Any] | None:
         """Atomically claim the oldest queued job for ``model``.
 
-        Returns the claimed job or None if the queue is empty.
+        The UPDATE carries ``status = 'queued'`` in its WHERE clause so two
+        workers polling concurrently can never claim the same job: SQLite
+        serializes writers, and the second UPDATE matches zero rows.
         """
         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         with self.tx() as conn:
             row = conn.execute(
-                "SELECT * FROM jobs WHERE model = ? AND status = ? "
-                "ORDER BY created_at ASC LIMIT 1",
-                (model, STATUS_QUEUED),
+                """
+                UPDATE jobs SET status = ?, started_at = ?
+                WHERE id = (
+                    SELECT id FROM jobs
+                    WHERE model = ? AND status = ?
+                    ORDER BY created_at ASC LIMIT 1
+                ) AND status = ?
+                RETURNING *
+                """,
+                (STATUS_RUNNING, now, model, STATUS_QUEUED, STATUS_QUEUED),
             ).fetchone()
-            if row is None:
-                return None
-            conn.execute(
-                "UPDATE jobs SET status = ?, started_at = ? WHERE id = ?",
-                (STATUS_RUNNING, now, row["id"]),
-            )
-        return self.get_job(row["id"])  # type: ignore[return-value]
+        return dict(row) if row else None
 
     def update_job(
         self,

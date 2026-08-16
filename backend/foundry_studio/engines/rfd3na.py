@@ -32,7 +32,8 @@ class RFD3NAEngine(BaseEngine):
     def _run(self, job: dict[str, Any]) -> EngineResult:
         params = json.loads(job.get("params_json") or "{}")
         job_dir = self.ensure_job_dir(job)
-        json_path = _build_design_json(params, job_dir)
+        input_files = self.job_input_files(job)
+        json_path = _build_design_json(params, job_dir, input_files)
 
         n_batches = int(params.get("n_batches") or 1)
         sampler = str(params.get("sampler") or "default")

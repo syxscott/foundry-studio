@@ -25,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     install = sub.add_parser("install-checkpoints", help="Install model checkpoints")
     install.add_argument("models", nargs="+", help="e.g. rfd3 rf3 proteinmpnn")
 
-    version = sub.add_parser("version", help="Print version")
+    sub.add_parser("version", help="Print version")
     return parser
 
 

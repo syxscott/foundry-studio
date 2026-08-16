@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
 
 from foundry_studio import __version__
 from foundry_studio.api.deps import get_db, get_manager, get_settings
@@ -17,7 +16,6 @@ from foundry_studio.engines import models as model_catalog
 from foundry_studio.engines.registry import (
     engine_modes_for,
     real_engine_available,
-    resolve_engine,
 )
 from foundry_studio.i18n import MESSAGES
 from foundry_studio.schemas import CheckpointInfo, HealthResponse, ModelInfo

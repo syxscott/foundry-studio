@@ -23,8 +23,30 @@ _VARIANT_CHECKPOINT = {
 class MPNNEngine(BaseEngine):
     model_id = "mpnn"
 
+    def __init__(self, *, db, workdir, log_path):
+        super().__init__(db=db, workdir=workdir, log_path=log_path)
+        self._params: dict[str, Any] = {}
+        self._initialized_model_type: str | None = None
+
+    def run(self, job: dict[str, Any]) -> EngineResult:
+        self._params = json.loads(job.get("params_json") or "{}")
+        # protein_mpnn vs ligand_mpnn load different checkpoints; force a
+        # re-initialization so one worker can serve both variants without
+        # carrying stale weights into the next job.
+        model_type = str(self._params.get("model_type") or "protein_mpnn")
+        if (
+            self._initialized_model_type is not None
+            and self._initialized_model_type != model_type
+        ):
+            self._engine = None  # type: ignore[assignment]
+            self.initialized = False
+            self._initialized_model_type = None
+        return super().run(job)
+
     def _initialize(self) -> None:
-        from mpnn.inference_engines.mpnn import MPNNInferenceEngine  # type: ignore[import-not-found]
+        from mpnn.inference_engines.mpnn import (
+            MPNNInferenceEngine,  # type: ignore[import-not-found]
+        )
 
         model_type = str(self._params.get("model_type") or "protein_mpnn")
         ckpt_name = _VARIANT_CHECKPOINT.get(model_type, "proteinmpnn")
@@ -40,16 +62,13 @@ class MPNNEngine(BaseEngine):
             write_structures=True,
             device=None,  # auto-detect CUDA/XPU/MPS/CPU
         )
-
-    def run(self, job: dict[str, Any]) -> EngineResult:
-        self._params = json.loads(job.get("params_json") or "{}")
-        return super().run(job)
+        self._initialized_model_type = model_type
 
     def _run(self, job: dict[str, Any]) -> EngineResult:
         params = json.loads(job.get("params_json") or "{}")
         job_dir = self.ensure_job_dir(job)
 
-        input_dicts = self._build_input_dicts(params, job_dir)
+        input_dicts = self._build_input_dicts(params, job_dir, job)
         if not input_dicts:
             raise ValueError("MPNN requires at least one input structure (CIF/PDB)")
 
@@ -61,12 +80,11 @@ class MPNNEngine(BaseEngine):
         return EngineResult(outputs=outputs, summary={"model": "mpnn"})
 
     def _build_input_dicts(
-        self, params: dict[str, Any], job_dir: Any
+        self, params: dict[str, Any], job_dir: Any, job: dict[str, Any]
     ) -> list[dict[str, Any]]:
-        input_files = params.get("_input_files", [])
-        structures = [
-            f for f in input_files if f.get("role") in ("structure", "input")
-        ]
+        structures = self.job_input_files(
+            job, roles={"structure", "input"}
+        )
         if not structures:
             return []
 

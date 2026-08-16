@@ -20,30 +20,45 @@ class RF3Engine(BaseEngine):
         super().__init__(db=db, workdir=workdir, log_path=log_path)
         # Stashed before initialize() so n_recycles/num_steps can be applied.
         self._params: dict[str, Any] = {}
+        self._initialized_key: tuple[int, int] | None = None
+
+    def run(self, job: dict[str, Any]) -> EngineResult:
+        self._params = json.loads(job.get("params_json") or "{}")
+        # n_recycles/num_steps are baked into the engine at initialize time;
+        # re-initialize when a new job asks for different values.
+        key = (
+            int(self._params.get("n_recycles", 10)),
+            int(self._params.get("num_steps", 50)),
+        )
+        if self._initialized_key is not None and self._initialized_key != key:
+            self._engine = None  # type: ignore[assignment]
+            self.initialized = False
+            self._initialized_key = None
+        return super().run(job)
 
     def _initialize(self) -> None:
-        from rf3.inference_engines.rf3 import RF3InferenceEngine  # type: ignore[import-not-found]
+        from rf3.inference_engines.rf3 import (
+            RF3InferenceEngine,  # type: ignore[import-not-found]
+        )
 
         ckpt_state = model_checkpoint_state("rf3")
         ckpt = ckpt_state["path"] or "rf3"
+        n_recycles = int(self._params.get("n_recycles", 10))
+        num_steps = int(self._params.get("num_steps", 50))
         self._engine = RF3InferenceEngine(
             ckpt_path=ckpt,
-            n_recycles=int(self._params.get("n_recycles", 10)),
-            num_steps=int(self._params.get("num_steps", 50)),
+            n_recycles=n_recycles,
+            num_steps=num_steps,
         )
         self._engine.initialize()
-
-    def run(self, job: dict[str, Any]) -> EngineResult:
-        # RF3 params are needed at init time; stash them before initialize().
-        self._params = json.loads(job.get("params_json") or "{}")
-        return super().run(job)
+        self._initialized_key = (n_recycles, num_steps)
 
     def _run(self, job: dict[str, Any]) -> EngineResult:
         params = json.loads(job.get("params_json") or "{}")
         job_dir = self.ensure_job_dir(job)
 
         # Inputs: prefer uploaded files, else server-side paths in params.
-        input_paths = self._resolve_input_paths(params, job_dir)
+        input_paths = self._resolve_input_paths(params, job_dir, job)
         if not input_paths:
             raise ValueError("RF3 requires at least one input (FASTA/CIF/PDB)")
 
@@ -67,16 +82,16 @@ class RF3Engine(BaseEngine):
         return EngineResult(outputs=outputs, summary={"model": "rf3"})
 
     def _resolve_input_paths(
-        self, params: dict[str, Any], job_dir: Any
+        self, params: dict[str, Any], job_dir: Any, job: dict[str, Any]
     ) -> list[str]:
         paths: list[str] = []
-        input_files = params.get("_input_files", [])
-        for f in input_files:
-            if f.get("role") in ("structure", "input", "sequence", "fasta"):
-                candidate = job_dir / f["filename"]
-                if candidate.is_file():
-                    paths.append(str(candidate))
-        for raw in (params.get("input_paths") or []):
+        for f in self.job_input_files(
+            job, roles={"structure", "input", "sequence", "fasta"}
+        ):
+            candidate = job_dir / f["filename"]
+            if candidate.is_file():
+                paths.append(str(candidate))
+        for raw in params.get("input_paths") or []:
             if isinstance(raw, str) and raw.strip():
                 paths.append(raw)
         return paths

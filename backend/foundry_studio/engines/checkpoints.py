@@ -9,7 +9,6 @@ Foundry package is installed, its ``REGISTERED_CHECKPOINTS`` take precedence
 from __future__ import annotations
 
 import hashlib
-import shutil
 import time
 import urllib.request
 from dataclasses import dataclass
