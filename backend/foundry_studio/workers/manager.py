@@ -25,6 +25,22 @@ logger = logging.getLogger("foundry_studio.manager")
 HEARTBEAT_STALE_SECONDS = 60
 
 
+def _parse_utc(iso_utc: str) -> float | None:
+    """Parse a ``%Y-%m-%dT%H:%M:%SZ`` timestamp into epoch seconds.
+
+    ``time.mktime`` interprets the string in the *local* timezone, which would
+    skew staleness checks by the UTC offset (e.g. +8h on this host). Use
+    ``calendar.timegm`` so the stored UTC value is compared correctly against
+    ``time.time()``.
+    """
+    import calendar
+
+    try:
+        return calendar.timegm(time.strptime(iso_utc, "%Y-%m-%dT%H:%M:%SZ"))
+    except (ValueError, OverflowError, TypeError):
+        return None
+
+
 class WorkerManager:
     def __init__(self, settings: Settings, db: StudioDB):
         self.settings = settings
@@ -152,13 +168,8 @@ class WorkerManager:
             # likely hung on a job. Restart it and requeue its running job.
             worker = self.db.get_worker(model)
             if worker is not None and worker.get("heartbeat_at"):
-                try:
-                    last_beat = time.mktime(
-                        time.strptime(worker["heartbeat_at"], "%Y-%m-%dT%H:%M:%SZ")
-                    )
-                except (ValueError, OverflowError):
-                    last_beat = 0.0
-                if now - last_beat > HEARTBEAT_STALE_SECONDS:
+                last_beat = _parse_utc(worker["heartbeat_at"])
+                if last_beat is not None and now - last_beat > HEARTBEAT_STALE_SECONDS:
                     logger.warning(
                         "Worker %s heartbeat stale (%.0fs); restarting",
                         model,
