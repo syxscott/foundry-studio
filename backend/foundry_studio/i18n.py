@@ -113,6 +113,36 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ja": "シミュレーションモード：結果は組み込みシミュレーションエンジンによるもので、UI・フロー検証専用であり、実際の予測ではありません。",
         "ru": "Режим симуляции: результаты получены встроенным симуляционным движком и предназначены только для проверки интерфейса и потока, а не являются реальными предсказаниями.",
     },
+    "error.build_spec_failed": {
+        "zh": "无法构建任务规格：{detail}",
+        "en": "Failed to build job specification: {detail}",
+        "ja": "ジョブ仕様の構築に失敗しました: {detail}",
+        "ru": "Не удалось построить спецификацию задачи: {detail}",
+    },
+    "error.hpc_not_configured": {
+        "zh": "超算后端未配置：{detail}",
+        "en": "HPC backend is not configured: {detail}",
+        "ja": "HPCバックエンドが設定されていません: {detail}",
+        "ru": "Бэкенд HPC не настроен: {detail}",
+    },
+    "error.submit_failed": {
+        "zh": "任务提交失败：{detail}",
+        "en": "Job submission failed: {detail}",
+        "ja": "ジョブの送信に失敗しました: {detail}",
+        "ru": "Не удалось отправить задачу: {detail}",
+    },
+    "error.remote_failed": {
+        "zh": "远程任务执行失败，请查看日志。",
+        "en": "Remote job failed; see logs for details.",
+        "ja": "リモートジョブが失敗しました。詳細はログを確認してください。",
+        "ru": "Удалённая задача завершилась с ошибкой; подробности в журнале.",
+    },
+    "error.agent_cannot_parse": {
+        "zh": "无法从指令中解析出可执行计划：{detail}",
+        "en": "Could not parse an executable plan from the instruction: {detail}",
+        "ja": "指示から実行可能な計画を解析できませんでした: {detail}",
+        "ru": "Не удалось разобрать исполняемый план из инструкции: {detail}",
+    },
 }
 
 

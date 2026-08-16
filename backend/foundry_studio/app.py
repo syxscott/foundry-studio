@@ -10,11 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from foundry_studio import __version__
-from foundry_studio.api import routes_files, routes_jobs, routes_meta
+from foundry_studio.api import routes_agent, routes_files, routes_jobs, routes_meta
 from foundry_studio.api.errors import register_exception_handlers
 from foundry_studio.config import Settings, get_settings
 from foundry_studio.db import StudioDB
-from foundry_studio.workers.manager import WorkerManager
+from foundry_studio.joblifecycle import JobOrchestrator
 
 logger = logging.getLogger("foundry_studio.api")
 
@@ -27,12 +27,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     (data_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     db = StudioDB(data_dir / "studio.db")
-    manager = WorkerManager(settings=settings, db=db)
+    manager = JobOrchestrator(settings=settings, db=db)
     manager.start()
 
     app = FastAPI(
         title="foundry-studio",
-        description="Web UI for RosettaCommons Foundry protein design toolkit",
+        description="Agent-first control surface for RosettaCommons Foundry protein design on HPC",
         version=__version__,
     )
     app.state.settings = settings
@@ -54,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(routes_meta.router, prefix=api_prefix, tags=["meta"])
     app.include_router(routes_jobs.router, prefix=api_prefix + "/jobs", tags=["jobs"])
     app.include_router(routes_files.router, prefix=api_prefix + "/jobs", tags=["files"])
+    app.include_router(routes_agent.router, prefix=api_prefix + "/agent", tags=["agent"])
 
     # Mount built frontend if present.
     frontend_dist = settings.resolved_frontend_dist()

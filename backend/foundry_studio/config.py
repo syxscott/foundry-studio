@@ -59,11 +59,49 @@ class Settings(BaseSettings):
     checkpoint_dirs: str = ""
 
     # --- Worker ----------------------------------------------------------------------
-    # Seconds a worker waits between database polls when idle.
-    worker_poll_interval: float = 2.0
+    # Seconds the orchestrator waits between status polls.
+    worker_poll_interval: float = 3.0
 
-    # Automatically (re)spawn model workers while the API server is running.
-    worker_autostart: bool = True
+    # --- HPC execution ---------------------------------------------------------------
+    # Which backend executes jobs. "local" runs engines on this machine (mock HPC,
+    # requires no cluster). "slurm" / "pbs" / "lsf" submit to a real scheduler via
+    # the configured transport.  Swapping this does NOT change how jobs are described.
+    hpc_backend: str = "local"
+
+    # How foundry is launched on the compute side.  "container": Singularity/Apptainer
+    # image; "module": `module load`; "conda": conda env; "script": raw command.
+    hpc_invocation_kind: str = "container"
+    hpc_container_image: str = ""  # e.g. /scratch/foundry.sif
+    hpc_module_load: str = ""  # e.g. foundry
+    hpc_conda_env: str = ""  # e.g. foundry
+
+    # Scheduler resource defaults (overridable per job by an agent or the UI).
+    hpc_partition: str = ""
+    hpc_account: str = ""
+    hpc_time: str = "24:00:00"
+    hpc_gres: str = ""  # e.g. gpu:1
+    hpc_cpus: int = 4
+    hpc_mem: str = "16G"
+    hpc_tasks: int = 1
+
+    # Transport / cluster connection (only needed for slurm/pbs/lsf backends).
+    hpc_transport: str = "ssh"  # ssh | sharedfs | rest
+    hpc_remote_host: str = ""
+    hpc_remote_user: str = ""
+    hpc_remote_key: str = ""
+    hpc_remote_port: int = 22
+    hpc_remote_workdir: str = ""  # staging dir on the cluster, e.g. /scratch/$USER/foundry
+    hpc_gateway_url: str = ""
+    hpc_gateway_token: str = ""
+
+    # --- Agent -----------------------------------------------------------------------
+    # Enable the in-app conversational agent + external Control API.
+    agent_enabled: bool = True
+    # When set, the agent planner calls this LLM endpoint; otherwise it falls back
+    # to a deterministic heuristic parser (no external dependency, no fake calls).
+    agent_llm_url: str = ""
+    agent_llm_model: str = ""
+    agent_llm_token: str = ""
 
     # --- Security --------------------------------------------------------------------
     # Bind the API only to loopback by default. Set to "0.0.0.0" for LAN access.

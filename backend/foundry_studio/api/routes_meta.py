@@ -19,7 +19,7 @@ from foundry_studio.engines.registry import (
 )
 from foundry_studio.i18n import MESSAGES
 from foundry_studio.schemas import CheckpointInfo, HealthResponse, ModelInfo
-from foundry_studio.workers.manager import WorkerManager
+from foundry_studio.joblifecycle import JobOrchestrator
 
 router = APIRouter()
 
@@ -28,10 +28,11 @@ router = APIRouter()
 def health(
     settings: Settings = Depends(get_settings),
     db: StudioDB = Depends(get_db),
-    manager: WorkerManager = Depends(get_manager),
+    manager: JobOrchestrator = Depends(get_manager),
 ) -> HealthResponse:
     foundry_ok = _foundry_importable()
     gpu_ok = _gpu_available()
+    info = manager.backend_info()
     return HealthResponse(
         status="ok",
         version=__version__,
@@ -40,7 +41,8 @@ def health(
         gpu_available=gpu_ok,
         foundry_available=foundry_ok,
         data_dir=str(settings.resolved_data_dir()),
-        workers=manager.worker_status(),
+        backend=info,
+        workers=[info],
         message=None,
     )
 

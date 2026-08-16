@@ -16,7 +16,7 @@ from foundry_studio.config import Settings
 from foundry_studio.db import StudioDB
 from foundry_studio.engines import models as model_catalog
 from foundry_studio.engines.base import tail_text
-from foundry_studio.engines.registry import resolve_engine
+from foundry_studio.joblifecycle import JobOrchestrator
 from foundry_studio.schemas import (
     JOB_STATUSES,
     CancelResponse,
@@ -24,7 +24,6 @@ from foundry_studio.schemas import (
     JobList,
     JobRead,
 )
-from foundry_studio.workers.manager import WorkerManager
 
 router = APIRouter()
 
@@ -64,6 +63,13 @@ def _job_to_read(
     logs_url = (
         f"/api/jobs/{job['id']}/logs" if job.get("log_path") else None
     )
+    job_spec: dict[str, Any] | None = None
+    raw_spec = job.get("job_spec_json")
+    if raw_spec:
+        try:
+            job_spec = json.loads(raw_spec)
+        except json.JSONDecodeError:
+            job_spec = None
     return JobRead(
         id=job["id"],
         model=job["model"],
@@ -79,6 +85,10 @@ def _job_to_read(
         created_at=job["created_at"],
         started_at=job.get("started_at"),
         finished_at=job.get("finished_at"),
+        remote_job_id=job.get("remote_job_id"),
+        backend=job.get("backend"),
+        scheduler=job.get("scheduler"),
+        job_spec=job_spec,
         outputs=outputs,
         logs_url=logs_url,
     )
@@ -207,7 +217,7 @@ def submit_job(
     job_id: str,
     settings: Settings = Depends(get_settings),
     db: StudioDB = Depends(get_db),
-    manager: WorkerManager = Depends(get_manager),
+    manager: JobOrchestrator = Depends(get_manager),
 ) -> JobRead:
     job = db.get_job(job_id)
     if job is None:
@@ -221,29 +231,14 @@ def submit_job(
             params={"job_id": job_id},
         )
 
-    # Validate that the model has a usable engine before queueing.
-    try:
-        _, effective, is_sim = resolve_engine(
-            job["model"],
-            engine_mode=settings.engine_mode,
-            allow_simulation=settings.allow_simulation_fallback,
-            db=db,
-            workdir=settings.resolved_data_dir() / "jobs",
-            log_path=settings.resolved_data_dir() / "logs" / f"{job_id}.log",
-        )
-    except RuntimeError as exc:
+    # Hand the job to the orchestrator, which builds a JobSpec and submits it to
+    # the active backend (local or a real scheduler).  Any submit failure is
+    # recorded on the job itself with a clear error_code.
+    updated = manager.submit(job_id)
+    if updated is None:
         raise ApiError(
-            "error.engine_unavailable",
-            status_code=503,
-            params={"model": job["model"], "detail": str(exc)},
-        ) from exc
-
-    updated = db.submit_job(job_id)
-    assert updated is not None
-
-    # Ensure a worker is alive for this model so the job starts promptly.
-    if settings.worker_autostart:
-        manager.ensure_worker(job["model"])
+            "error.job_not_found", status_code=404, params={"job_id": job_id}
+        )
     return _job_to_read(updated, data_dir=settings.resolved_data_dir())
 
 
@@ -251,6 +246,7 @@ def submit_job(
 def cancel_job(
     job_id: str,
     db: StudioDB = Depends(get_db),
+    manager: JobOrchestrator = Depends(get_manager),
 ) -> CancelResponse:
     job = db.get_job(job_id)
     if job is None:
@@ -263,12 +259,9 @@ def cancel_job(
             status_code=409,
             params={"job_id": job_id},
         )
-    updated = db.request_cancel(job_id)
-    assert updated is not None
-    # If still queued, cancel is immediate.
-    if updated["status"] == "queued":
-        db.update_job(job_id, status="canceled")
-        updated = db.get_job(job_id)
+    # Orchestrator cancels both the local process and any remote scheduler job.
+    manager.cancel(job_id)
+    updated = db.get_job(job_id)
     assert updated is not None
     return CancelResponse(
         job_id=job_id, canceled=True, status=updated["status"]

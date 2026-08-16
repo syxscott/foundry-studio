@@ -10,6 +10,7 @@ Schema versioning is handled with a small ``schema_version`` pragma table.
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
 import time
@@ -50,6 +51,11 @@ CREATE TABLE IF NOT EXISTS jobs (
     log_path TEXT,
     outputs_dir TEXT,
     cancel_requested INTEGER NOT NULL DEFAULT 0,
+    remote_job_id TEXT,
+    backend TEXT,
+    scheduler TEXT,
+    job_spec_json TEXT,
+    spec_overrides_json TEXT,
     created_at TEXT NOT NULL,
     started_at TEXT,
     finished_at TEXT
@@ -101,6 +107,27 @@ class StudioDB:
                 conn.execute(
                     "INSERT INTO schema_version(version) VALUES (?)", (SCHEMA_VERSION,)
                 )
+            self._migrate(conn)
+
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        """Add columns introduced after schema v1 without dropping data."""
+        existing = {
+            r["name"] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()
+        }
+        added: list[str] = []
+        for col, ctype in (
+            ("remote_job_id", "TEXT"),
+            ("backend", "TEXT"),
+            ("scheduler", "TEXT"),
+            ("job_spec_json", "TEXT"),
+            ("spec_overrides_json", "TEXT"),
+        ):
+            if col not in existing:
+                conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} {ctype}")
+                added.append(col)
+        if added:
+            logger = logging.getLogger("foundry_studio.db")
+            logger.info("Migrated jobs table: added columns %s", added)
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -200,6 +227,10 @@ class StudioDB:
         log_path: str | None = None,
         started_at: str | None = None,
         cancel_requested: bool | None = None,
+        remote_job_id: str | None = None,
+        backend: str | None = None,
+        scheduler: str | None = None,
+        job_spec_json: str | None = None,
     ) -> dict[str, Any] | None:
         sets: list[str] = []
         values: list[Any] = []
@@ -230,6 +261,18 @@ class StudioDB:
         if cancel_requested is not None:
             sets.append("cancel_requested = ?")
             values.append(1 if cancel_requested else 0)
+        if remote_job_id is not None:
+            sets.append("remote_job_id = ?")
+            values.append(remote_job_id)
+        if backend is not None:
+            sets.append("backend = ?")
+            values.append(backend)
+        if scheduler is not None:
+            sets.append("scheduler = ?")
+            values.append(scheduler)
+        if job_spec_json is not None:
+            sets.append("job_spec_json = ?")
+            values.append(job_spec_json)
         if not sets:
             return self.get_job(job_id)
         sets_sql = ", ".join(sets)
@@ -253,6 +296,17 @@ class StudioDB:
             conn.execute(
                 "UPDATE jobs SET input_files_json = ? WHERE id = ?",
                 (json.dumps(input_files, ensure_ascii=False), job_id),
+            )
+        return self.get_job(job_id)  # type: ignore[return-value]
+
+    def set_spec_overrides(
+        self, job_id: str, overrides: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Persist per-job environment overrides (agent-tuned resources/invocation)."""
+        with self.tx() as conn:
+            conn.execute(
+                "UPDATE jobs SET spec_overrides_json = ? WHERE id = ?",
+                (json.dumps(overrides, ensure_ascii=False), job_id),
             )
         return self.get_job(job_id)  # type: ignore[return-value]
 

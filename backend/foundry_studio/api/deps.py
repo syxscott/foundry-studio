@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import Request
 
 from foundry_studio.db import StudioDB
-from foundry_studio.workers.manager import WorkerManager
+from foundry_studio.joblifecycle import JobOrchestrator
 
 
 def get_db(request: Request) -> StudioDB:
@@ -16,5 +16,5 @@ def get_settings(request: Request):
     return request.app.state.settings
 
 
-def get_manager(request: Request) -> WorkerManager:
+def get_manager(request: Request) -> JobOrchestrator:
     return request.app.state.manager

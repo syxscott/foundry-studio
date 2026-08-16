@@ -63,6 +63,7 @@ class HealthResponse(BaseModel):
     gpu_available: bool
     foundry_available: bool
     data_dir: str
+    backend: dict[str, Any] = Field(default_factory=dict)
     workers: list[dict[str, Any]] = Field(default_factory=list)
     message: str | None = None
 
@@ -93,6 +94,13 @@ class JobRead(BaseModel):
     created_at: str
     started_at: str | None = None
     finished_at: str | None = None
+    # HPC / remote execution tracking — useful for external agents to correlate a
+    # local job with the scheduler job it spawned (e.g. a SLURM job id).
+    remote_job_id: str | None = None
+    backend: str | None = None
+    scheduler: str | None = None
+    # The exact JobSpec handed to the backend (for transparency / re-submission).
+    job_spec: dict[str, Any] | None = None
     outputs: list[dict[str, Any]] = Field(default_factory=list)
     logs_url: str | None = None
 
