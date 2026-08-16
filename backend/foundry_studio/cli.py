@@ -17,6 +17,17 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--host", default=None, help="Bind host (overrides settings)")
     serve.add_argument("--port", type=int, default=None, help="Bind port (overrides settings)")
 
+    doctor = sub.add_parser(
+        "doctor",
+        help="Run the environment diagnostics (GPU, CUDA, rc-foundry packages, "
+        "checkpoints, HPC connectivity, permissions)",
+    )
+    doctor.add_argument(
+        "--json",
+        action="store_true",
+        help="Output machine-readable JSON",
+    )
+
     install = sub.add_parser("install-checkpoints", help="Install model checkpoints")
     install.add_argument("models", nargs="+", help="e.g. rfd3 rf3 proteinmpnn")
 
@@ -58,6 +69,31 @@ def main(argv: list[str] | None = None) -> int:
             settings.port = args.port
         run_server(settings)
         return 0
+
+    if args.command == "doctor":
+        from foundry_studio.doctor import print_report, run_all
+
+        results = run_all()
+        if args.json:
+            import json
+
+            print(json.dumps({
+                "results": [{
+                    "label": r.label,
+                    "severity": r.severity.value,
+                    "message": r.message,
+                    "hint": r.hint,
+                    "details": r.details,
+                } for r in results],
+                "summary": {
+                    "passed": sum(1 for r in results if r.severity.value == "PASS"),
+                    "warnings": sum(1 for r in results if r.severity.value == "WARN"),
+                    "failures": sum(1 for r in results if r.severity.value == "FAIL"),
+                },
+            }, indent=2))
+        else:
+            print_report(results)
+        return 0 if not any(r.severity.value == "FAIL" for r in results) else 1
 
     parser.print_help()
     return 1
