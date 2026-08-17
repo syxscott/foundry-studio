@@ -32,6 +32,17 @@ export interface CheckpointInfo {
   url?: string | null;
 }
 
+export interface LlmSettingsResponse {
+  provider: string;
+  base_url: string;
+  model: string;
+  api_key_env: string;
+  key_present: boolean;
+  configured: boolean;
+  timeout: number;
+  retry: number;
+}
+
 export interface BackendInfo {
   active_backend: string;
   scheduler: string;

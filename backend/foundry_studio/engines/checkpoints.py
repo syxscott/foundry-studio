@@ -265,6 +265,8 @@ def cleanup_checkpoints(extra_dirs: str = "", dry_run: bool = False) -> dict[str
     """Remove downloaded checkpoints. With dry_run, list what would be removed."""
     deleted: list[dict[str, Any]] = []
     total_bytes = 0
+    search_dirs = [str(d) for d in checkpoint_dirs(extra_dirs)]
+    install_dir = str(DEFAULT_CHECKPOINT_DIR.expanduser().resolve())
     for entry_info in list_checkpoints(extra_dirs):
         path = Path(entry_info["path"]) if entry_info["path"] else None
         if path is None or not path.is_file():
@@ -275,4 +277,10 @@ def cleanup_checkpoints(extra_dirs: str = "", dry_run: bool = False) -> dict[str
         else:
             path.unlink(missing_ok=True)
             deleted.append({"path": str(path), "size_bytes": 0})
-    return {"deleted": deleted, "total_bytes": total_bytes, "dry_run": dry_run}
+    return {
+        "deleted": deleted,
+        "total_bytes": total_bytes,
+        "dry_run": dry_run,
+        "search_dirs": search_dirs,
+        "install_dir": install_dir,
+    }

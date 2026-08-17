@@ -13,6 +13,7 @@ import {
   JobDetailPage,
   JobsPage,
   DesignSessionPage,
+  SettingsPage,
 } from "./pages";
 
 type Route =
@@ -20,6 +21,7 @@ type Route =
   | { name: "jobs" }
   | { name: "job"; id: string }
   | { name: "environment" }
+  | { name: "settings" }
   | { name: "design"; id?: string };
 
 function parseHash(): Route {
@@ -30,6 +32,7 @@ function parseHash(): Route {
     return { name: "jobs" };
   }
   if (parts[0] === "environment") return { name: "environment" };
+  if (parts[0] === "settings") return { name: "settings" };
   if (parts[0] === "design") {
     if (parts[1]) return { name: "design", id: parts[1] };
     return { name: "design" };
@@ -91,6 +94,7 @@ export default function App() {
     else if (r.name === "jobs") window.location.hash = "#/jobs";
     else if (r.name === "job") window.location.hash = `#/jobs/${r.id}`;
     else if (r.name === "environment") window.location.hash = "#/environment";
+    else if (r.name === "settings") window.location.hash = "#/settings";
     else if (r.name === "design") window.location.hash = r.id ? `#/design/${r.id}` : "#/design";
   };
 
@@ -125,6 +129,9 @@ export default function App() {
             <button className={navClass(route.name === "environment")} onClick={() => navigate({ name: "environment" })}>
               {t("app.nav.environment")}
             </button>
+            <button className={navClass(route.name === "settings")} onClick={() => navigate({ name: "settings" })}>
+              {t("app.nav.settings")}
+            </button>
           </nav>
           <LanguageSwitcher />
           <span className="ml-1 hidden sm:inline-flex">
@@ -142,6 +149,7 @@ export default function App() {
           <JobDetailPage jobId={route.id} onBack={() => navigate({ name: "jobs" })} />
         )}
         {route.name === "environment" && <EnvironmentPage />}
+        {route.name === "settings" && <SettingsPage />}
         {route.name === "design" && (
           <DesignSessionPage sessionId={route.id ?? null} />
         )}

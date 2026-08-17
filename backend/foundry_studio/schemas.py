@@ -132,3 +132,16 @@ class ErrorResponse(BaseModel):
     params: dict[str, str] = Field(default_factory=dict)
     message: str
     detail: str | None = None
+
+
+class LlmSettingsResponse(BaseModel):
+    """Current LLM provider configuration (safe, non-sensitive fields only)."""
+
+    provider: str
+    base_url: str
+    model: str
+    api_key_env: str
+    key_present: bool
+    configured: bool
+    timeout: float
+    retry: int

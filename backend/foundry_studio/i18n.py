@@ -161,6 +161,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ja": "指示から実行可能な計画を解析できませんでした: {detail}",
         "ru": "Не удалось разобрать исполняемый план из инструкции: {detail}",
     },
+    "error.validation_failed": {
+        "zh": "参数验证失败",
+        "en": "Validation failed",
+        "ja": "バリデーションに失敗しました",
+        "ru": "Ошибка валидации",
+    },
 }
 
 

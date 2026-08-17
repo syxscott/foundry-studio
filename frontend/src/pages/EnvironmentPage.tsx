@@ -64,9 +64,20 @@ export function EnvironmentPage() {
   const handleClean = async () => {
     if (!window.confirm(t("environment.cleanConfirm"))) return;
     try {
-      await api.cleanCheckpoints();
-      setNote({ kind: "ok", text: t("environment.cleanOk") });
-      await load();
+      const result = await api.cleanCheckpoints();
+      if (result.deleted.length === 0) {
+        const dirs = result.search_dirs.join("\n");
+        setNote({
+          kind: "err",
+          text: t("environment.cleanNothingFound", {
+            install_dir: result.install_dir,
+            search_dirs: dirs,
+          }),
+        });
+      } else {
+        setNote({ kind: "ok", text: t("environment.cleanOk", { count: result.deleted.length }) });
+        await load();
+      }
     } catch (e) {
       setNote({ kind: "err", text: e instanceof ApiClientError ? e.body.message : String(e) });
     }

@@ -9,6 +9,7 @@ import type {
   HealthResponse,
   Job,
   JobCreatePayload,
+  LlmSettingsResponse,
   ModelInfo,
 } from "../types/api";
 
@@ -58,10 +59,12 @@ export const api = {
       method: "POST",
     }),
   cleanCheckpoints: () =>
-    request<{ deleted: unknown[]; total_bytes: number; dry_run: boolean }>(
+    request<{ deleted: unknown[]; total_bytes: number; dry_run: boolean; search_dirs: string[]; install_dir: string }>(
       "/checkpoints/clean",
       { method: "POST" },
     ),
+
+  llmSettings: () => request<LlmSettingsResponse>("/settings/llm"),
 
   createJob: (payload: JobCreatePayload) =>
     request<Job>("/jobs", { method: "POST", body: JSON.stringify(payload) }),
