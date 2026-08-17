@@ -9,7 +9,7 @@ component can call `toast(...)` to surface a transient message.
 - Stacks at the bottom-right; newest on top
 */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ToastKind = "info" | "success" | "warning" | "error";
 interface Toast {
@@ -106,7 +106,14 @@ export function Toaster() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   useEffect(() => toastBus.subscribe(setToasts), []);
 
+  // Track active timers in a ref so unmount can always clear them.
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   useEffect(() => {
+    // Clear previous timers whenever the toast list changes.
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+
     if (toasts.length === 0) return;
     const timers = toasts
       .filter((t) => !t.sticky)
@@ -114,8 +121,15 @@ export function Toaster() {
         const remaining = Math.max(0, t.ttl - (Date.now() - t.createdAt));
         return setTimeout(() => toastBus.dismiss(t.id), remaining);
       });
+    timersRef.current = timers;
     return () => timers.forEach(clearTimeout);
   }, [toasts]);
+
+  // Cleanup on unmount — prevents memory leaks if the component is ever
+  // removed while toasts are still pending.
+  useEffect(() => {
+    return () => timersRef.current.forEach(clearTimeout);
+  }, []);
 
   return (
     <div

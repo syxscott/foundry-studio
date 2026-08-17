@@ -115,6 +115,7 @@ export default function ManualJobForm({ onCreated }: { onCreated: (jobId: string
   const [engineMode, setEngineMode] = useState("auto");
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -207,11 +208,37 @@ export default function ManualJobForm({ onCreated }: { onCreated: (jobId: string
               {model.id !== "rf3" && <option value="motif">{t("home.roleMotif")}</option>}
               {model.id === "rf3" && <option value="sequence">{t("home.roleSequence")}</option>}
             </select>
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-ghost">{t("home.dropHere")}</button>
-            <input ref={fileInputRef} type="file" multiple accept={model.accepted_extensions.map((e) => `.${e}`).join(",")} className="hidden" onChange={(e) => selectFiles(e.target.files)} />
+          </div>
+          {/* Drop zone */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors cursor-pointer ${
+              dragOver
+                ? "border-brand-400 bg-brand-50 text-brand-700"
+                : "border-surface-border text-slate-400 hover:border-brand-300 hover:text-brand-500"
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              selectFiles(e.dataTransfer.files);
+            }}
+          >
+            <p className="text-sm">
+              {dragOver ? t("home.dropActive") : t("home.dropHere")}
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={model.accepted_extensions.map((e) => `.${e}`).join(",")}
+              className="hidden"
+              onChange={(e) => selectFiles(e.target.files)}
+            />
           </div>
           {files.length > 0 ? (
-            <ul className="text-sm text-slate-600 space-y-1">
+            <ul className="text-sm text-slate-600 space-y-1 mt-2">
               {files.map((f) => (
                 <li key={f.name} className="flex items-center gap-2">
                   <span className="truncate">{f.name}</span>
@@ -220,7 +247,7 @@ export default function ManualJobForm({ onCreated }: { onCreated: (jobId: string
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-slate-400">{t("home.noFiles")}</p>}
+          ) : <p className="text-sm text-slate-400 mt-2">{t("home.noFiles")}</p>}
         </div>
       )}
 

@@ -4,6 +4,47 @@ import { useTranslation } from "react-i18next";
 import { api, ApiClientError } from "../api";
 import type { AgentPlan, LlmProviderStatus } from "../types/api";
 
+/** Lightweight inline markdown: **bold**, *italic*, `code`. No external deps. */
+function inlineMarkdown(text: string): ReactNode[] {
+  const segments: ReactNode[] = [];
+  const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) segments.push(text.slice(last, m.index));
+    const chunk = m[0];
+    if (chunk.startsWith("**") && chunk.endsWith("**")) {
+      segments.push(<strong key={segments.length}>{chunk.slice(2, -2)}</strong>);
+    } else if (chunk.startsWith("`") && chunk.endsWith("`")) {
+      segments.push(
+        <code key={segments.length} className="text-[11px] bg-slate-100 px-1 rounded font-mono">
+          {chunk.slice(1, -1)}
+        </code>,
+      );
+    } else {
+      segments.push(<em key={segments.length}>{chunk.slice(1, -1)}</em>);
+    }
+    last = m.index + chunk.length;
+  }
+  if (last < text.length) segments.push(text.slice(last));
+  return segments;
+}
+
+/** Render multi-line text with inline markdown and line breaks. */
+function renderThinking(text: string): ReactNode {
+  const lines = text.split("\n");
+  return (
+    <>
+      {lines.map((line, i) => (
+        <span key={i}>
+          {inlineMarkdown(line)}
+          {i < lines.length - 1 && <br />}
+        </span>
+      ))}
+    </>
+  );
+}
+
 const EXAMPLES = [
   "用 RFD3 设计一个 80 残基的 binder，针对 hotspot A12/B34，采样 5 个",
   "Predict the structure of this protein with RF3",
@@ -231,8 +272,8 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
               </span>
             )}
           </div>
-          <pre className="text-sm text-slate-700 whitespace-pre-wrap break-words font-mono leading-relaxed max-h-48 overflow-auto scroll-thin">
-            {thinking || "…"}
+          <pre className="text-sm text-slate-700 leading-relaxed max-h-48 overflow-auto scroll-thin">
+            {renderThinking(thinking || "…")}
           </pre>
         </div>
       )}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiClientError } from "../api";
+import { toast } from "../components/Toaster";
 import { ProgressBar } from "../components/ProgressBar";
 import { StatusBadge } from "../components/StatusBadge";
 import { StructureViewer } from "../components/StructureViewer";
@@ -316,12 +317,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function FastaPreview({ url }: { url: string }) {
   const { t } = useTranslation();
   const [text, setText] = useState<string | null>(null);
+  // Track which URL the current fetch is for so a stale response cannot
+  // overwrite a newer one (e.g. when the user switches between outputs).
+  const currentUrlRef = useRef<string>(url);
 
   useEffect(() => {
+    currentUrlRef.current = url;
+    setText(null);
     fetch(url)
       .then((r) => r.text())
-      .then((x) => setText(x.slice(0, 4000)))
-      .catch(() => setText(""));
+      .then((x) => {
+        if (currentUrlRef.current !== url) return; // stale — ignore
+        setText(x.slice(0, 4000));
+      })
+      .catch(() => {
+        if (currentUrlRef.current !== url) return;
+        setText("");
+      });
   }, [url]);
 
   if (text === null) return null;
@@ -330,9 +342,22 @@ function FastaPreview({ url }: { url: string }) {
       <summary className="text-xs text-slate-500 cursor-pointer select-none">
         {t("jobDetail.detail")}
       </summary>
-      <pre className="mt-2 bg-slate-50 border border-surface-border text-xs p-3 rounded-md overflow-auto max-h-48 font-mono whitespace-pre-wrap">
-        {text}
-      </pre>
+      <div className="mt-2 bg-slate-50 border border-surface-border rounded-md overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-surface-border bg-white/60">
+          <span className="text-[10px] text-slate-400 font-mono">FASTA · {text.split("\n").length} lines</span>
+          <button
+            className="text-[11px] text-brand-600 hover:text-brand-800 transition-colors"
+            onClick={() => {
+              navigator.clipboard.writeText(text).then(() => toast.success(t("jobDetail.copied")));
+            }}
+          >
+            {t("jobDetail.copy")}
+          </button>
+        </div>
+        <pre className="text-xs p-3 overflow-auto max-h-48 font-mono whitespace-pre-wrap">
+          {text}
+        </pre>
+      </div>
     </details>
   );
 }
