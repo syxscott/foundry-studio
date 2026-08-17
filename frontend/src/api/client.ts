@@ -155,7 +155,13 @@ export const api = {
     fetch(`${BASE}/agent/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, lang, api_key: cfg.apiKey || undefined }),
+      body: JSON.stringify({
+        message,
+        lang,
+        api_key: cfg.apiKey || undefined,
+        base_url: cfg.baseUrl || undefined,
+        model: cfg.model || undefined,
+      }),
       signal: handlers.signal,
     })
       .then((res) => {

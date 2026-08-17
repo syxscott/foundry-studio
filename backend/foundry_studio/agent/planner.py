@@ -74,9 +74,17 @@ class PlanResult:
 
 
 class Planner:
-    def __init__(self, settings: Settings | None = None, api_key: str | None = None):
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+    ):
         self.settings = settings
         self.api_key = api_key
+        self._base_url_override = base_url
+        self._model_override = model
 
     # ------------------------------------------------------------------ #
     # Public entry points
@@ -84,7 +92,30 @@ class Planner:
     def _registry(self):
         if self.settings is None:
             return None
-        return build_registry(self.settings)
+        reg = build_registry(self.settings)
+        if self._base_url_override:
+            # Build an override provider with the user's base_url/model.
+            # This takes priority over the settings-backed provider.
+            from foundry_studio.llm.providers.openai_compat import OpenAICompatibleProvider
+
+            override_provider = OpenAICompatibleProvider(
+                name="override",
+                base_url=self._base_url_override,
+                api_key_env="",  # empty → requires explicit api_key
+                model=self._model_override,
+            )
+            # Replace the default provider with the override.
+            reg._providers.clear()
+            reg.register("override", override_provider)
+        return reg
+
+    def _resolve_model(self) -> str | None:
+        """Return user-provided model, else fallback to settings."""
+        if self._model_override:
+            return self._model_override
+        if self.settings is not None:
+            return getattr(self.settings, "agent_llm_model", None)
+        return None
 
     async def resolve(self, text: str) -> PlanResult:
         """One-shot planning for the Control API: LLM when available, else heuristic."""
@@ -94,7 +125,7 @@ class Planner:
             return self._plan_heuristic(text)
         try:
             messages = self._build_messages(text)
-            model = getattr(self.settings, "agent_llm_model", None)
+            model = self._resolve_model()
             raw = await provider.complete(messages, model=model or None, api_key=self.api_key)
             return self._parse_llm_plan(raw, text)
         except Exception as exc:  # noqa: BLE001
@@ -118,7 +149,7 @@ class Planner:
             return
         try:
             messages = self._build_messages(text)
-            model = getattr(self.settings, "agent_llm_model", None)
+            model = self._resolve_model()
             acc: list[str] = []
             async for delta in provider.stream(messages, model=model or None, api_key=self.api_key):
                 acc.append(delta)
