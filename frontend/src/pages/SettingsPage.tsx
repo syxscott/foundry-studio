@@ -260,7 +260,7 @@ export function SettingsPage() {
               className="input font-mono text-sm"
               value={cfg.model}
               onChange={(e) => { setCfg((p) => ({ ...p, model: e.target.value })); setSaved(false); }}
-              placeholder="gpt-4o-mini"
+              placeholder="gpt-5.6-luna"
             />
           </div>
         </div>

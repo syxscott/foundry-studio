@@ -116,6 +116,10 @@ export interface AgentRunPayload {
   invocation?: Record<string, unknown>;
   engine_mode?: string;
   lang?: string;
+  // User's LLM settings (mirrors ChatRequest fields)
+  api_key?: string;
+  base_url?: string;
+  llm_model?: string;
 }
 
 export interface OutputFile {

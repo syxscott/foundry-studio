@@ -150,7 +150,7 @@ def llm_settings(
     return LlmSettingsResponse(
         provider=settings.agent_llm_provider or "openai",
         base_url=settings.agent_llm_base_url,
-        model=settings.agent_llm_model or "gpt-4o-mini",
+        model=settings.agent_llm_model or "gpt-5.6-luna",
         configured=first.get("configured", False),
         timeout=settings.agent_llm_timeout,
         retry=settings.agent_llm_retry,

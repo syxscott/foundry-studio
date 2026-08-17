@@ -147,6 +147,9 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
         resources: plan.resources,
         invocation: plan.invocation,
         lang: i18n.language,
+        api_key: api.llmConfig.get().apiKey || undefined,
+        base_url: api.llmConfig.get().baseUrl || undefined,
+        llm_model: api.llmConfig.get().model || undefined,
       });
       onSubmitted(job.id);
     } catch (e) {

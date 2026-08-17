@@ -55,6 +55,8 @@ class RunRequest(BaseModel):
     engine_mode: str = "auto"
     lang: str = "en"
     api_key: str | None = None
+    base_url: str | None = None  # user-provided LLM base URL
+    llm_model: str | None = None  # user-provided LLM model name
 
 
 # --------------------------------------------------------------------------- #
@@ -156,7 +158,7 @@ async def run(
 
     # If only free text was given, let the planner resolve model + params.
     if model is None and payload.message:
-        planner = Planner(settings=settings, api_key=payload.api_key, base_url=None, model=None)
+        planner = Planner(settings=settings, api_key=payload.api_key, base_url=payload.base_url, model=payload.llm_model)
         try:
             plan = await planner.resolve(payload.message)
         except ValueError as exc:

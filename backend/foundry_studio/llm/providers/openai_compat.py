@@ -101,7 +101,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self, messages: list[dict], model: str | None, temperature: float
     ) -> dict:
         return {
-            "model": model or self.model or "gpt-4o-mini",
+            "model": model or self.model or "gpt-5.6-luna",
             "messages": messages,
             "temperature": temperature,
             "stream": True,
