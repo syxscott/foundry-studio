@@ -10,14 +10,16 @@ import type { LlmConfig, LlmSettingsResponse } from "../types/api";
 type PresetMeta = { baseUrl: string; model: string; icon: string; category: "cloud" | "local" | "custom" };
 const PRESETS: Record<string, PresetMeta> = {
   deepseek: {
+    // DeepSeek V4 Pro — GA released 2026-08-13; deepseek-chat deprecated 2026-07-24
     baseUrl: "https://api.deepseek.com/v1",
-    model: "deepseek-chat",
+    model: "deepseek-v4-pro",
     icon: "⬡",
     category: "cloud",
   },
   openai: {
+    // gpt-5.4-mini retired from Codex 2026-08-31 → gpt-5.6-luna (recommended replacement)
     baseUrl: "https://api.openai.com/v1",
-    model: "gpt-5.4-mini",
+    model: "gpt-5.6-luna",
     icon: "◉",
     category: "cloud",
   },
@@ -28,29 +30,30 @@ const PRESETS: Record<string, PresetMeta> = {
     category: "cloud",
   },
   siliconflow: {
+    // DeepSeek-V4-Pro via SiliconFlow mirrors; DeepSeek-V3 deprecated 2026-07-24
     baseUrl: "https://api.siliconflow.cn/v1",
-    model: "deepseek-ai/DeepSeek-V3",
+    model: "deepseek-ai/DeepSeek-V4-Pro",
     icon: "◈",
     category: "cloud",
   },
   kimi: {
-    // Moonshot AI — OpenAI-compatible; kimi-k3 (1M, multimodal), kimi-k2.6 (256k, coding/agentic)
+    // Moonshot AI — OpenAI-compatible; kimi-k3 (July 16 2026, 2.8T, 1M, multimodal, #1 Frontend Code)
     baseUrl: "https://api.moonshot.cn/v1",
-    model: "kimi-k2.6",
+    model: "kimi-k3",
     icon: "🌙",
     category: "cloud",
   },
   stepfun: {
-    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k)
+    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k, coding/agentic)
     baseUrl: "https://api.stepfun.com/v1",
     model: "step-2",
     icon: "⬆",
     category: "cloud",
   },
   zhipu: {
-    // 智谱 GLM — GLM-5.2 (2026-06, 1M上下文)
+    // 智谱 GLM — GLM-5.3 (Aug 14 2026, 编程开源第一, +50% vs GLM-5.2); API soon
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
-    model: "GLM-5.2",
+    model: "GLM-5.3",
     icon: "🔷",
     category: "cloud",
   },
@@ -76,7 +79,7 @@ const PRESETS: Record<string, PresetMeta> = {
     category: "cloud",
   },
   qwen: {
-    // 阿里通义 — compatible-mode 端点; qwen-max-latest (旗舰), qwen-plus (均衡)
+    // 阿里通义 — compatible-mode; qwen-plus (131K), qwen-plus-0728 (1M hybrid reasoning)
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     model: "qwen-plus",
     icon: "◇",

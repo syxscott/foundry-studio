@@ -72,8 +72,8 @@ export const api = {
     get(): LlmConfig {
       try {
         const raw = localStorage.getItem(this.storageKey);
-        return raw ? (JSON.parse(raw) as LlmConfig) : { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini", apiKey: "" };
-      } catch { return { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini", apiKey: "" }; }
+        return raw ? (JSON.parse(raw) as LlmConfig) : { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-5.6-luna", apiKey: "" };
+      } catch { return { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-5.6-luna", apiKey: "" }; }
     },
     set(cfg: LlmConfig): void {
       try { localStorage.setItem(this.storageKey, JSON.stringify(cfg)); } catch { /* quota exceeded */ }

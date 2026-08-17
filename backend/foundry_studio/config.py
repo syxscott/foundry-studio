@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     agent_llm_provider: str = "openai"
     agent_llm_base_url: str = "https://api.openai.com/v1"
     agent_llm_api_key_env: str = "OPENAI_API_KEY"
-    agent_llm_model: str = "gpt-4o-mini"
+    agent_llm_model: str = "gpt-5.6-luna"
     agent_llm_models: list[str] = []
     agent_llm_retry: int = 2
     # Per-request timeout for the agent's OpenAI-compatible LLM call.
