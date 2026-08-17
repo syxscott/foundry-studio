@@ -65,6 +65,7 @@ function StructureViewerPanel({
   candidateName: string;
   onLoadError?: (error: string) => void;
 }) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<NGL.Stage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -159,13 +160,13 @@ function StructureViewerPanel({
           <div className="absolute inset-0 flex items-center justify-center bg-white/70">
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <span className="spinner text-brand-500" />
-              Loading structure…
+              {t("viewer.loading")}
             </div>
           </div>
         )}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-red-600 text-sm">
-            Failed to load: {error}
+            {t("viewer.loadFailed", { detail: error })}
           </div>
         )}
       </div>

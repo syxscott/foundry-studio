@@ -346,7 +346,7 @@ function DesignSessionPageContent({ sessionId }: DesignSessionPageProps) {
     updateCandidate,
     toggleFavorite,
   } = useActiveSession();
-  const { createSession, setActiveSession } = useSession();
+  const { createSession, setActiveSession, sessions } = useSession();
 
   const [filter, setFilter] = useState<CandidateFilter>("all");
   const [compareMode, setCompareMode] = useState(false);
@@ -366,27 +366,33 @@ function DesignSessionPageContent({ sessionId }: DesignSessionPageProps) {
   // Accumulator for streaming AI text — avoids functional updater mismatch.
   const aiMessageRef = useRef<{ roundId: string; text: string } | null>(null);
 
-  // Create session if needed
+  // Sync active session with URL param. Use `sessions` (not memoized `session`)
+  // as dependency so the effect fires reliably on URL changes.
   useEffect(() => {
-    if (!session && sessionId) {
-      // Session doesn't exist, create a new one
+    if (!sessionId) return;
+    const existing = sessions.find((s) => s.id === sessionId);
+    if (existing) {
+      setActiveSession(sessionId);
+    } else if (!session) {
+      // Only create when neither a matching session exists NOR is one already active
       const newSession = createSession(t("designSession.newSessionDefault"));
       setActiveSession(newSession.id);
     }
-  }, [session, sessionId, createSession, setActiveSession, t]);
+  }, [sessions, sessionId, session, createSession, setActiveSession, t]);
 
   // Poll for job statuses
   useEffect(() => {
     if (!session) return;
 
-    const candidateJobIds = session.rounds
-      .flatMap((r) => r.candidates)
-      .filter((c) => c.jobId)
-      .map((c) => c.jobId!);
-
-    if (candidateJobIds.length === 0) return;
-
     const pollInterval = setInterval(async () => {
+      // Recompute inside the interval so we always poll the latest rounds.
+      const candidateJobIds = session.rounds
+        .flatMap((r) => r.candidates)
+        .filter((c) => c.jobId)
+        .map((c) => c.jobId!);
+
+      if (candidateJobIds.length === 0) return;
+
       const newStatuses = new Map<string, JobStatus>();
       for (const jobId of candidateJobIds) {
         try {
