@@ -412,6 +412,8 @@ export const zh = {
         baichuan: "百川智能",
         minimax: "MiniMax",
         qwen: "通义千问",
+        "doubao-pro": "豆包 Pro (火山方舟)",
+        "doubao-code": "豆包 Code (火山方舟)",
         ollama: "Ollama（本地）",
         custom: "自定义",
       },

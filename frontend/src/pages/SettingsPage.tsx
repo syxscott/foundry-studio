@@ -5,7 +5,7 @@ import { api } from "../api";
 import type { LlmConfig, LlmSettingsResponse } from "../types/api";
 
 /** Built-in OpenAI-compatible provider presets.
- *  Sources: cross-referenced with cc-switch-main / yangmao.ai / csdn LLM API docs.
+ *  Sources: cross-referenced with cc-switch-main / volcengine / MiniMax / StepFun official docs (2026-08).
  *  All use standard /v1/chat/completions + Bearer token — no special SDK needed. */
 type PresetMeta = { baseUrl: string; model: string; icon: string; category: "cloud" | "local" | "custom" };
 const PRESETS: Record<string, PresetMeta> = {
@@ -41,14 +41,14 @@ const PRESETS: Record<string, PresetMeta> = {
     category: "cloud",
   },
   stepfun: {
-    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k), step-3.5-flash (2026-01 latest)
+    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k)
     baseUrl: "https://api.stepfun.com/v1",
     model: "step-2",
     icon: "⬆",
     category: "cloud",
   },
   zhipu: {
-    // 智谱 GLM — GLM-5.2 (2026-06, 1M上下文), GLM-4.7-Flash (免费)
+    // 智谱 GLM — GLM-5.2 (2026-06, 1M上下文)
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
     model: "GLM-5.2",
     icon: "🔷",
@@ -69,9 +69,9 @@ const PRESETS: Record<string, PresetMeta> = {
     category: "cloud",
   },
   minimax: {
-    // MiniMax — abab6.5s (均衡), abab6.5g (高速)
-    baseUrl: "https://api.minimax.chat/v1",
-    model: "abab6.5s",
+    // MiniMax — MiniMax-M3 (2026 旗舰, 1M上下文, Agent/Coding), MiniMax-M2.7 (均衡)
+    baseUrl: "https://api.minimax.io/v1",
+    model: "MiniMax-M3",
     icon: "◆",
     category: "cloud",
   },
@@ -80,6 +80,20 @@ const PRESETS: Record<string, PresetMeta> = {
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     model: "qwen-plus",
     icon: "◇",
+    category: "cloud",
+  },
+  "doubao-pro": {
+    // 火山引擎方舟 — Doubao Seed 2.1 Pro 旗舰款 (256k, 深度推理/Agent/多模态)
+    baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+    model: "doubao-seed-2-1-pro-260628",
+    icon: "🔥",
+    category: "cloud",
+  },
+  "doubao-code": {
+    // 火山引擎方舟 Coding Plan — 专为 Claude Code/Cursor 等编程工具优化
+    baseUrl: "https://ark.cn-beijing.volces.com/api/coding",
+    model: "ark-code-latest",
+    icon: "🔥",
     category: "cloud",
   },
   ollama: {

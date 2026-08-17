@@ -415,6 +415,8 @@ export const ja: TranslationKey = {
         baichuan: "Baichuan",
         minimax: "MiniMax",
         qwen: "Qwen (Alibaba)",
+        "doubao-pro": "Doubao Pro (Volcengine)",
+        "doubao-code": "Doubao Code (Volcengine)",
         ollama: "Ollama（ローカル）",
         custom: "カスタム",
       },
