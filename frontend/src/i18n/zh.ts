@@ -402,7 +402,7 @@ export const zh = {
       tip: "提示：API Key 仅存储在浏览器本地。如需清除，请打开浏览器开发者工具 → Application → Local Storage → 清除。",
       preset: {
         deepseek: "DeepSeek",
-        openai: "OpenAI (GPT-5.4-mini)",
+        openai: "OpenAI (GPT-5.6-luna)",
         "openai-gpt4o": "OpenAI (GPT-5.6-terra)",
         siliconflow: "硅基流动",
         kimi: "Kimi (Moonshot)",

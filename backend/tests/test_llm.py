@@ -42,7 +42,7 @@ def _make_fake_provider(plan_json: str = PLAN_JSON) -> BaseLLMProvider:
         name = "mock"
         base_url = "http://mock"
         api_key_env = ""
-        model = "gpt-4o-mini"
+        model = "gpt-5.6-luna"
 
         async def stream(self, messages, model=None, temperature=0.0, **opts):
             full = plan_json

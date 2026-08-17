@@ -405,7 +405,7 @@ export const en: TranslationKey = {
       tip: "Tip: To clear the API key, open browser DevTools → Application → Local Storage → clear.",
       preset: {
         deepseek: "DeepSeek",
-        openai: "OpenAI (GPT-5.4-mini)",
+        openai: "OpenAI (GPT-5.6-luna)",
         "openai-gpt4o": "OpenAI (GPT-5.6-terra)",
         siliconflow: "SiliconFlow",
         kimi: "Kimi (Moonshot)",

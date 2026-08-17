@@ -405,7 +405,7 @@ export const ja: TranslationKey = {
       tip: "ヒント：API Keyをクリアするには，ブラウザの開発者ツール → Application → Local Storage → クリアしてください。",
       preset: {
         deepseek: "DeepSeek",
-        openai: "OpenAI (GPT-5.4-mini)",
+        openai: "OpenAI (GPT-5.6-luna)",
         "openai-gpt4o": "OpenAI (GPT-5.6-terra)",
         siliconflow: "SiliconFlow",
         kimi: "Kimi (Moonshot)",

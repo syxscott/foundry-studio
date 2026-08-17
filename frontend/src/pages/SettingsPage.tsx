@@ -44,14 +44,15 @@ const PRESETS: Record<string, PresetMeta> = {
     category: "cloud",
   },
   stepfun: {
-    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k, coding/agentic)
+    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k, coding/agentic); baseUrl also appears as platform.stepfun.com/v1 in docs
     baseUrl: "https://api.stepfun.com/v1",
     model: "step-2",
     icon: "⬆",
     category: "cloud",
   },
   zhipu: {
-    // 智谱 GLM — GLM-5.3 (Aug 14 2026, 编程开源第一, +50% vs GLM-5.2); API soon
+    // 智谱 GLM — GLM-5.3 (Aug 14 2026, 编程开源第一, +50% vs GLM-5.2)
+    // ⚠️ API availability confirmed by news; verify in console if calls fail
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
     model: "GLM-5.3",
     icon: "🔷",
@@ -87,6 +88,7 @@ const PRESETS: Record<string, PresetMeta> = {
   },
   "doubao-pro": {
     // 火山引擎方舟 — Doubao Seed 2.1 Pro 旗舰款 (256k, 深度推理/Agent/多模态)
+    // ⚠️ 模型名 doubao-seed-2-1-pro-260628 未在公开文档确认，建议在 Volcengine 控制台验证
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
     model: "doubao-seed-2-1-pro-260628",
     icon: "🔥",
@@ -94,6 +96,7 @@ const PRESETS: Record<string, PresetMeta> = {
   },
   "doubao-code": {
     // 火山引擎方舟 Coding Plan — 专为 Claude Code/Cursor 等编程工具优化
+    // ⚠️ ark-code-latest 未在公开文档确认，建议在 Volcengine 控制台验证
     baseUrl: "https://ark.cn-beijing.volces.com/api/coding",
     model: "ark-code-latest",
     icon: "🔥",
