@@ -5,8 +5,8 @@ import { api } from "../api";
 import type { LlmConfig, LlmSettingsResponse } from "../types/api";
 
 /** Built-in OpenAI-compatible provider presets.
- *  Source: cross-referenced with cc-switch-main provider roster for Chinese LLM endpoints
- *  that expose a standard /v1/chat/completions interface. */
+ *  Sources: cross-referenced with cc-switch-main / yangmao.ai / csdn LLM API docs.
+ *  All use standard /v1/chat/completions + Bearer token — no special SDK needed. */
 type PresetMeta = { baseUrl: string; model: string; icon: string; category: "cloud" | "local" | "custom" };
 const PRESETS: Record<string, PresetMeta> = {
   deepseek: {
@@ -34,27 +34,52 @@ const PRESETS: Record<string, PresetMeta> = {
     category: "cloud",
   },
   kimi: {
-    // Moonshot AI — OpenAI-compatible endpoint
-    // kimi-k3 (1M, multimodal, latest), kimi-k2.6 (256k, recommended, agentic/coding)
+    // Moonshot AI — OpenAI-compatible; kimi-k3 (1M, multimodal), kimi-k2.6 (256k, coding/agentic)
     baseUrl: "https://api.moonshot.cn/v1",
     model: "kimi-k2.6",
     icon: "🌙",
     category: "cloud",
   },
   stepfun: {
-    // 阶跃星辰 — OpenAI-compatible endpoint
-    // step-3.5-flash (2026-01, latest), step-2 (LiveBench国产第一, 128k)
+    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k), step-3.5-flash (2026-01 latest)
     baseUrl: "https://api.stepfun.com/v1",
     model: "step-2",
     icon: "⬆",
     category: "cloud",
   },
   zhipu: {
-    // 智谱 GLM — OpenAI-compatible endpoint (BigModel API)
-    // GLM-5.2 (2026-06, 旗舰, 1M上下文) / GLM-4.7-Flash (免费)
+    // 智谱 GLM — GLM-5.2 (2026-06, 1M上下文), GLM-4.7-Flash (免费)
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
     model: "GLM-5.2",
     icon: "🔷",
+    category: "cloud",
+  },
+  yi: {
+    // 零一万物 — OpenAI-compatible; yi-lightning (性价比), yi-large (旗舰)
+    baseUrl: "https://api.lingyiwanwu.com/v1",
+    model: "yi-large",
+    icon: "✦",
+    category: "cloud",
+  },
+  baichuan: {
+    // 百川智能 — OpenAI-compatible; Baichuan4 (旗舰)
+    baseUrl: "https://api.baichuan-ai.com/v1",
+    model: "Baichuan4",
+    icon: "◈",
+    category: "cloud",
+  },
+  minimax: {
+    // MiniMax — abab6.5s (均衡), abab6.5g (高速)
+    baseUrl: "https://api.minimax.chat/v1",
+    model: "abab6.5s",
+    icon: "◆",
+    category: "cloud",
+  },
+  qwen: {
+    // 阿里通义 — compatible-mode 端点; qwen-max-latest (旗舰), qwen-plus (均衡)
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    model: "qwen-plus",
+    icon: "◇",
     category: "cloud",
   },
   ollama: {
