@@ -39,6 +39,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     lang: str = "en"
+    api_key: str | None = None  # frontend-provided key; overrides env var
 
 
 class RunRequest(BaseModel):
@@ -51,6 +52,7 @@ class RunRequest(BaseModel):
     invocation: dict[str, Any] = Field(default_factory=dict)
     engine_mode: str = "auto"
     lang: str = "en"
+    api_key: str | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -129,7 +131,7 @@ async def chat(
     settings: Settings = Depends(get_settings),
 ) -> StreamingResponse:
     """Stream an NL instruction as tokens, ending with a JobSpec draft (SSE)."""
-    planner = Planner(settings=settings)
+    planner = Planner(settings=settings, api_key=payload.api_key)
     return StreamingResponse(
         _chat_sse(planner, payload.message),
         media_type="text/event-stream",
@@ -152,7 +154,7 @@ async def run(
 
     # If only free text was given, let the planner resolve model + params.
     if model is None and payload.message:
-        planner = Planner(settings=settings)
+        planner = Planner(settings=settings, api_key=payload.api_key)
         try:
             plan = await planner.resolve(payload.message)
         except ValueError as exc:

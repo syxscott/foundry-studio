@@ -148,53 +148,13 @@ def llm_settings(
     summaries = reg.summaries()
     first = summaries[0] if summaries else {}
     return LlmSettingsResponse(
-        provider=settings.agent_llm_provider,
+        provider=settings.agent_llm_provider or "openai",
         base_url=settings.agent_llm_base_url,
-        model=settings.agent_llm_model,
-        api_key_env=settings.agent_llm_api_key_env,
-        key_present=first.get("key_present", False),
+        model=settings.agent_llm_model or "gpt-4o-mini",
         configured=first.get("configured", False),
         timeout=settings.agent_llm_timeout,
         retry=settings.agent_llm_retry,
     )
-
-
-@router.post("/settings/write-env", response_model=dict)
-def write_env_key(
-    body: dict,
-    settings: Settings = Depends(get_settings),
-) -> dict:
-    """Write one key=value line to the local .env file so the change persists across restarts."""
-    import os
-
-    env_var = str(body.get("env_var", "")).strip()
-    value = str(body.get("value", "")).strip()
-    if not env_var or not value:
-        raise ApiError("error.validation_failed", status_code=400, params={})
-    env_file = settings.resolved_data_dir() / ".env"
-    env_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Read existing lines, replace or append the target key.
-    lines: list[str] = []
-    if env_file.is_file():
-        lines = env_file.read_text(encoding="utf-8").splitlines()
-    new_lines: list[str] = []
-    replaced = False
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(f"{env_var}="):
-            new_lines.append(f"{env_var}={value}")
-            replaced = True
-        else:
-            new_lines.append(line)
-    if not replaced:
-        new_lines.append(f"{env_var}={value}")
-    env_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
-
-    # Also set in current process so it's immediately effective.
-    os.environ[env_var] = value
-
-    return {"ok": True, "env_var": env_var, "env_file": str(env_file)}
 
 
 @router.get("/i18n", response_model=dict)

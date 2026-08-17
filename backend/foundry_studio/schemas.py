@@ -135,13 +135,15 @@ class ErrorResponse(BaseModel):
 
 
 class LlmSettingsResponse(BaseModel):
-    """Current LLM provider configuration (safe, non-sensitive fields only)."""
+    """LLM provider defaults (safe, non-sensitive fields only).
+
+    API keys are managed entirely by the frontend (localStorage) and sent
+    with each request body — never stored on the backend.
+    """
 
     provider: str
     base_url: str
     model: str
-    api_key_env: str
-    key_present: bool
     configured: bool
     timeout: float
     retry: int

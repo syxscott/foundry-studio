@@ -74,8 +74,9 @@ class PlanResult:
 
 
 class Planner:
-    def __init__(self, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None, api_key: str | None = None):
         self.settings = settings
+        self.api_key = api_key
 
     # ------------------------------------------------------------------ #
     # Public entry points
@@ -94,7 +95,7 @@ class Planner:
         try:
             messages = self._build_messages(text)
             model = getattr(self.settings, "agent_llm_model", None)
-            raw = await provider.complete(messages, model=model or None)
+            raw = await provider.complete(messages, model=model or None, api_key=self.api_key)
             return self._parse_llm_plan(raw, text)
         except Exception as exc:  # noqa: BLE001
             result = self._plan_heuristic(text)
@@ -119,7 +120,7 @@ class Planner:
             messages = self._build_messages(text)
             model = getattr(self.settings, "agent_llm_model", None)
             acc: list[str] = []
-            async for delta in provider.stream(messages, model=model or None):
+            async for delta in provider.stream(messages, model=model or None, api_key=self.api_key):
                 acc.append(delta)
                 yield {"type": "token", "text": delta}
             plan = self._parse_llm_plan("".join(acc), text)

@@ -36,11 +36,17 @@ export interface LlmSettingsResponse {
   provider: string;
   base_url: string;
   model: string;
-  api_key_env: string;
-  key_present: boolean;
   configured: boolean;
   timeout: number;
   retry: number;
+}
+
+/** LLM config stored in localStorage (frontend-only, never sent to backend except via request body). */
+export interface LlmConfig {
+  provider: string;
+  baseUrl: string;
+  model: string;
+  apiKey: string;
 }
 
 export interface BackendInfo {

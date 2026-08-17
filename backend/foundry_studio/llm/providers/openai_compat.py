@@ -50,6 +50,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         *,
         name: str,
         base_url: str,
+        api_key: str | None = None,
         api_key_env: str = "",
         model: str | None = None,
         models: list[str] | None = None,
@@ -59,7 +60,8 @@ class OpenAICompatibleProvider(BaseLLMProvider):
     ) -> None:
         self.name = name
         self.base_url = base_url.rstrip("/")
-        self.api_key_env = api_key_env
+        self._api_key = api_key  # direct key (from request), overrides env
+        self.api_key_env = api_key_env  # env-var name (from settings)
         self.model = model
         self.models = models or []
         self.timeout = float(timeout)
@@ -70,7 +72,10 @@ class OpenAICompatibleProvider(BaseLLMProvider):
     def endpoint(self) -> str:
         return f"{self.base_url}/chat/completions"
 
-    def _resolve_key(self) -> str | None:
+    def _resolve_key(self, api_key: str | None = None) -> str | None:
+        # Priority: direct api_key (from request) > env var
+        if api_key:
+            return normalizeApiKey(api_key)
         if not self.api_key_env:
             return None
         raw = os.environ.get(self.api_key_env, "")
@@ -80,17 +85,14 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                 f"no API key for provider '{self.name}'; set environment variable "
                 f"{self.api_key_env}",
             )
-        # normalizeApiKey raises on whitespace / control chars; we let that
-        # propagate so the user sees a clear credential error instead of a
-        # 401 from the provider.
         return normalizeApiKey(raw)
 
-    def _headers(self) -> dict:
+    def _headers(self, api_key: str | None = None) -> dict:
         headers = {
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
         }
-        key = self._resolve_key()
+        key = self._resolve_key(api_key)
         if key:
             headers["Authorization"] = f"Bearer {key}"
         return headers
@@ -113,10 +115,11 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         messages: Iterable[dict],
         model: str | None = None,
         temperature: float = 0.0,
+        api_key: str | None = None,
         **opts,
     ) -> AsyncIterator[str]:
         async for chunk in self.stream_chunks(
-            messages, model=model, temperature=temperature, **opts
+            messages, model=model, temperature=temperature, api_key=api_key, **opts
         ):
             if chunk.type == "text" and chunk.text:
                 yield chunk.text
@@ -129,12 +132,13 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         messages: Iterable[dict],
         model: str | None = None,
         temperature: float = 0.0,
+        api_key: str | None = None,
         **opts,
     ) -> AsyncIterator[StreamChunk]:
         import httpx
 
         payload = self._payload(normalize_messages(messages), model, temperature)
-        headers = self._headers()
+        headers = self._headers(api_key=api_key)
         attempts = self.backoff.max_retries + 1
         last_err: BaseException | None = None
         last_err_code: str = LLMError.UNKNOWN

@@ -9,6 +9,7 @@ import type {
   HealthResponse,
   Job,
   JobCreatePayload,
+  LlmConfig,
   LlmSettingsResponse,
   ModelInfo,
 } from "../types/api";
@@ -65,6 +66,19 @@ export const api = {
     ),
 
   llmSettings: () => request<LlmSettingsResponse>("/settings/llm"),
+
+  llmConfig: {
+    storageKey: "foundry-studio-llm-config",
+    get(): LlmConfig {
+      try {
+        const raw = localStorage.getItem(this.storageKey);
+        return raw ? (JSON.parse(raw) as LlmConfig) : { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini", apiKey: "" };
+      } catch { return { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini", apiKey: "" }; }
+    },
+    set(cfg: LlmConfig): void {
+      try { localStorage.setItem(this.storageKey, JSON.stringify(cfg)); } catch { /* quota exceeded */ }
+    },
+  },
 
   createJob: (payload: JobCreatePayload) =>
     request<Job>("/jobs", { method: "POST", body: JSON.stringify(payload) }),
@@ -137,10 +151,11 @@ export const api = {
       signal?: AbortSignal;
     },
   ): void => {
+    const cfg = api.llmConfig.get();
     fetch(`${BASE}/agent/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, lang }),
+      body: JSON.stringify({ message, lang, api_key: cfg.apiKey || undefined }),
       signal: handlers.signal,
     })
       .then((res) => {
