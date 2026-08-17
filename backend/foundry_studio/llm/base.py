@@ -93,7 +93,7 @@ class LLMError(Exception):
             return LLMError.INVALID_REQUEST
         if status >= 500:
             return LLMError.SERVER
-        return f"HTTP_{status}"
+        return LLMError.UNKNOWN
 
 
 def errorChain(exc: BaseException | None) -> list[BaseException]:

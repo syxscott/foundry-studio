@@ -70,12 +70,12 @@ class HealthResponse(BaseModel):
 
 
 class JobCreate(BaseModel):
-    model: str
+    model: Literal["rfd3", "rfd3na", "rf3", "mpnn"]
     name: str = ""
     params: dict[str, Any] = Field(default_factory=dict)
     # Uploaded file descriptors: [{"role": "structure", "filename": "x.cif"}, ...]
     input_files: list[dict[str, str]] = Field(default_factory=list)
-    engine_mode: str = "auto"
+    engine_mode: Literal["auto", "real", "simulation"] = "auto"
 
 
 class JobRead(BaseModel):
@@ -144,7 +144,7 @@ class LlmSettingsResponse(BaseModel):
     provider: str
     base_url: str
     model: str
-    api_format: str = "openai_chat"
+    api_format: Literal["openai_chat", "anthropic"] = "openai_chat"
     configured: bool
     timeout: float
     retry: int

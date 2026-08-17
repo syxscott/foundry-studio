@@ -238,7 +238,6 @@ def _download_with_progress(url: str, dest: Path, progress_cb=None) -> None:
                 if progress_cb:
                     progress_cb(downloaded, total)
     tmp.replace(dest)
-    _ = start
 
 
 def model_checkpoint_state(
@@ -271,12 +270,13 @@ def cleanup_checkpoints(extra_dirs: str = "", dry_run: bool = False) -> dict[str
         path = Path(entry_info["path"]) if entry_info["path"] else None
         if path is None or not path.is_file():
             continue
-        total_bytes += path.stat().st_size
+        info = path.stat()
+        total_bytes += info.st_size
         if dry_run:
-            deleted.append({"path": str(path), "size_bytes": path.stat().st_size})
+            deleted.append({"path": str(path), "size_bytes": info.st_size})
         else:
             path.unlink(missing_ok=True)
-            deleted.append({"path": str(path), "size_bytes": 0})
+            deleted.append({"path": str(path), "size_bytes": info.st_size})
     return {
         "deleted": deleted,
         "total_bytes": total_bytes,

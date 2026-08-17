@@ -146,7 +146,10 @@ def llm_settings(
 
     reg = build_registry(settings)
     summaries = reg.summaries()
-    first = summaries[0] if summaries else {}
+    first = next(
+        (s for s in summaries if s["name"] == (settings.agent_llm_provider or "").strip()),
+        {},
+    )
     return LlmSettingsResponse(
         provider=settings.agent_llm_provider or "openai",
         base_url=settings.agent_llm_base_url,

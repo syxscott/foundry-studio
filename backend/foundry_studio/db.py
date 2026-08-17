@@ -158,6 +158,8 @@ class StudioDB:
     ) -> dict[str, Any]:
         job_id = uuid.uuid4().hex
         created = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        serialized_params = json.dumps(params, ensure_ascii=False)
+        serialized_input_files = json.dumps(input_files, ensure_ascii=False)
         with self.tx() as conn:
             conn.execute(
                 """
@@ -171,8 +173,8 @@ class StudioDB:
                     model,
                     name,
                     STATUS_DRAFT,
-                    json.dumps(params, ensure_ascii=False),
-                    json.dumps(input_files, ensure_ascii=False),
+                    serialized_params,
+                    serialized_input_files,
                     engine_mode,
                     created,
                 ),
@@ -282,20 +284,32 @@ class StudioDB:
         return self.get_job(job_id)  # type: ignore[return-value]
 
     def request_cancel(self, job_id: str) -> dict[str, Any] | None:
-        job = self.get_job(job_id)
-        if job is None:
-            return None
-        if job["status"] in TERMINAL_STATUSES:
-            return job
-        return self.update_job(job_id, cancel_requested=True)
+        # Atomic read-check-write using the existing tx() context
+        with self.tx() as conn:
+            row = conn.execute(
+                "SELECT status FROM jobs WHERE id = ?", (job_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            if row["status"] in TERMINAL_STATUSES:
+                return dict(row)
+            conn.execute(
+                "UPDATE jobs SET cancel_requested = 1 WHERE id = ? AND status = ?",
+                (job_id, row["status"]),
+            )
+        return self.get_job(job_id)
 
     def set_input_files(
         self, job_id: str, input_files: list[dict[str, str]]
     ) -> dict[str, Any] | None:
         with self.tx() as conn:
+            try:
+                serialized = json.dumps(input_files, ensure_ascii=False)
+            except (TypeError, ValueError):
+                serialized = json.dumps([{"_serialization_error": str(input_files)}], ensure_ascii=False)
             conn.execute(
                 "UPDATE jobs SET input_files_json = ? WHERE id = ?",
-                (json.dumps(input_files, ensure_ascii=False), job_id),
+                (serialized, job_id),
             )
         return self.get_job(job_id)  # type: ignore[return-value]
 
@@ -304,9 +318,13 @@ class StudioDB:
     ) -> dict[str, Any] | None:
         """Persist per-job environment overrides (agent-tuned resources/invocation)."""
         with self.tx() as conn:
+            try:
+                serialized = json.dumps(overrides, ensure_ascii=False)
+            except (TypeError, ValueError):
+                serialized = json.dumps({"_serialization_error": str(overrides)}, ensure_ascii=False)
             conn.execute(
                 "UPDATE jobs SET spec_overrides_json = ? WHERE id = ?",
-                (json.dumps(overrides, ensure_ascii=False), job_id),
+                (serialized, job_id),
             )
         return self.get_job(job_id)  # type: ignore[return-value]
 

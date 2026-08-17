@@ -40,7 +40,13 @@ class LLMRegistry:
         """Per-provider status for the API (no secrets, only a key-present flag)."""
         out: list[dict] = []
         for name, p in self._providers.items():
-            api_key_env = getattr(p, "api_key_env", "") or ""
+            api_key_env = getattr(p, "api_key_env", None)
+            if api_key_env is None:
+                import logging
+                logging.getLogger("foundry_studio.llm").warning(
+                    "Provider %s is missing 'api_key_env' attribute", name
+                )
+                api_key_env = ""
             key_present = bool(api_key_env) and bool(
                 os.environ.get(api_key_env, "").strip()
             )

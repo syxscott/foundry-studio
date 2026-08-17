@@ -39,6 +39,8 @@ def _build_design_json(
 
     length = str(params.get("length") or "").strip()
     if length:
+        # RFdiffusion3 primarily uses contigs for length specification.
+        # Pass through but note it may be ignored by the engine.
         spec["length"] = length
 
     # Reference uploaded scaffold/motif files as design inputs.
@@ -57,7 +59,10 @@ def _build_design_json(
     design_key = params.get("_design_key", "design_1")
     payload = {design_key: spec}
     json_path = job_dir / "design_spec.json"
-    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    try:
+        json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    except (OSError, IOError) as exc:
+        raise RuntimeError(f"Failed to write design spec: {exc}") from exc
     return json_path
 
 

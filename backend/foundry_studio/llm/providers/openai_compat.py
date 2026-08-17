@@ -101,7 +101,7 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self, messages: list[dict], model: str | None, temperature: float
     ) -> dict:
         return {
-            "model": model or self.model or "gpt-5.6-luna",
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "stream": True,
@@ -139,15 +139,15 @@ class OpenAICompatibleProvider(BaseLLMProvider):
 
         payload = self._payload(normalize_messages(messages), model, temperature)
         headers = self._headers(api_key=api_key)
+        usage = TokenUsage()
+        finish = FinishReason.UNKNOWN
+        emitted_finish = False
         attempts = self.backoff.max_retries + 1
         last_err: BaseException | None = None
         last_err_code: str = LLMError.UNKNOWN
 
         for attempt in range(attempts):
             try:
-                usage = TokenUsage()
-                finish = FinishReason.UNKNOWN
-                emitted_finish = False
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     async with client.stream(
                         "POST", self.endpoint, json=payload, headers=headers
@@ -202,10 +202,12 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                                 continue
                             choice = choices[0]
                             finish_raw = choice.get("finish_reason")
-                            if finish_raw:
+                            if finish_raw is not None:
                                 finish = _FINISH_REASON_MAP.get(
                                     finish_raw, FinishReason.UNKNOWN
                                 )
+                            else:
+                                finish = FinishReason.UNKNOWN
                             delta = (
                                 (choice.get("delta") or {}).get("content")
                             )

@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from foundry_studio.utils import sanitize_job_id
+
 # Scheduler families we can generate submission scripts for.
 SCHEDULERS = ("slurm", "pbs", "lsf", "local")
 
@@ -59,8 +61,11 @@ class JobSpec:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> JobSpec:
+        model = data.get("model")
+        if not model:
+            raise ValueError("JobSpec model is required")
         return cls(
-            model=data["model"],
+            model=model,
             params=data.get("params", {}),
             input_files=data.get("input_files", []),
             invocation=data.get("invocation", {}),
@@ -141,7 +146,9 @@ def build_spec(
         invocation=invocation,
         resources=resources,
         output_patterns=default_output_patterns(job["model"]),
-        local_job_dir=str(Path(job.get("outputs_dir") or "").parent / job["id"])
-        if job.get("outputs_dir")
-        else None,
+        local_job_dir=(
+            str(Path(job.get("outputs_dir")).parent / sanitize_job_id(job.get("id") or ""))
+            if job.get("outputs_dir")
+            else None
+        ),
     )

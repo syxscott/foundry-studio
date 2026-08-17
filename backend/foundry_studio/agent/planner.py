@@ -301,7 +301,9 @@ class Planner:
         # Temperature.
         m = re.search(r"temperature\D*?([\d.]+)", text, re.I)
         if m and model == "mpnn":
-            params["temperature"] = float(m.group(1))
+            temp = float(m.group(1))
+            if 0.0 <= temp <= 2.0:
+                params["temperature"] = temp
 
         # Sampler (rfd3 family).
         for s in ("reflow", "analytic", "ddpm", "ddim"):
@@ -315,7 +317,7 @@ class Planner:
             params["symmetry"] = m.group(1)
 
         # Hotspots.
-        m = re.search(r"hotspots?\D*?([A-Z0-9,\s]+)", text, re.I)
+        m = re.search(r"hotspots?\D*?([a-z0-9,\s]+)", lowered)
         if m:
             params["hotspots"] = m.group(1).strip()
 
@@ -342,7 +344,12 @@ class Planner:
             resources["partition"] = m.group(1)
         m = re.search(r"time\D*?(\d{1,2}:\d{2}:\d{2})", lowered)
         if m:
-            resources["time"] = m.group(1)
+            try:
+                h, mi, s = map(int, m.group(1).split(":"))
+                if 0 <= h < 24 and 0 <= mi < 60 and 0 <= s < 60:
+                    resources["time"] = m.group(1)
+            except ValueError:
+                pass
 
     def _check_inputs(self, model: str, info: dict, text: str) -> list[str]:
         needs = model in ("rf3", "mpnn", "rfd3na")

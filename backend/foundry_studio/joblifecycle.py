@@ -217,6 +217,8 @@ class JobOrchestrator:
     # Poll loop
     # ------------------------------------------------------------------ #
     def _resume_submitted(self) -> None:
+        with self._lock:
+            self._handles.clear()
         try:
             with self.db.tx() as conn:
                 rows = conn.execute(
@@ -268,10 +270,23 @@ class JobOrchestrator:
                 continue
             if progress is not None:
                 self.db.update_job(job_id, progress=progress)
+
+            # Check cancel_requested for running jobs
+            if status == STATUS_RUNNING:
+                job = self.db.get_job(job_id)
+                if job and job.get("cancel_requested"):
+                    try:
+                        self._make_backend_for_handle(handle).cancel(handle)
+                    except Exception:  # noqa: BLE001
+                        logger.exception("cancel failed for %s", job_id)
+                    status = STATUS_CANCELED
+
             if status in (STATUS_SUCCEEDED, STATUS_FAILED, STATUS_CANCELED):
-                self._finalize(job_id, handle, status)
                 with self._lock:
-                    self._handles.pop(job_id, None)
+                    # Only finalize if this is still the same handle (not re-submitted)
+                    if job_id in self._handles and self._handles.get(job_id) is handle:
+                        self._finalize(job_id, handle, status)
+                        self._handles.pop(job_id, None)
 
     def _finalize(self, job_id: str, handle: RemoteHandle, status: str) -> None:
         dest = self.settings.resolved_data_dir() / "jobs" / job_id

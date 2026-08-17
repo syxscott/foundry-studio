@@ -8,6 +8,7 @@ pretending to run.  Commands and file transfers are executed through the system
 
 from __future__ import annotations
 
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -53,7 +54,13 @@ class SshTransport(Transport):
         return base
 
     def run(self, cmd: str, cwd: str | None = None) -> tuple[int, str, str]:
-        remote_cmd = f"cd {shlex.quote(self.remote_workdir)} && {cmd}" if cwd is None and self.remote_workdir else cmd
+        if cwd is not None:
+            # Always shell-quote when cwd is provided to prevent injection
+            remote_cmd = f"cd {shlex.quote(cwd)} && {shlex.quote(cmd)}"
+        elif self.remote_workdir:
+            remote_cmd = f"cd {shlex.quote(self.remote_workdir)} && {shlex.quote(cmd)}"
+        else:
+            remote_cmd = shlex.quote(cmd)
         proc = subprocess.run(
             self._ssh_base() + [self._target(), remote_cmd],
             capture_output=True,
@@ -62,6 +69,9 @@ class SshTransport(Transport):
         return proc.returncode, proc.stdout, proc.stderr
 
     def copy_to(self, local: Path, remote: str) -> None:
+        # Validate remote path to prevent traversal
+        if ".." in remote or remote.startswith("/"):
+            raise ValueError(f"Invalid remote path: {remote!r}")
         dest = f"{self._target()}:{remote}"
         proc = subprocess.run(
             self._scp_base() + [str(local), dest],
@@ -75,10 +85,18 @@ class SshTransport(Transport):
         local_dir = Path(local_dir)
         local_dir.mkdir(parents=True, exist_ok=True)
         fetched: list[Path] = []
+        # Validate remote path
+        if ".." in remote or remote.startswith("/"):
+            raise ValueError(f"Invalid remote path: {remote!r}")
         for pat in patterns:
+            # Prevent path traversal via pattern
+            if ".." in pat or pat.startswith("/"):
+                raise ValueError(f"Invalid pattern: {pat!r}")
+            # Restrict to safe filename characters
+            safe_pat = re.sub(r"[^a-zA-Z0-9.*_\-]", "_", pat)
             proc = subprocess.run(
                 self._scp_base()
-                + [f"{self._target()}:{remote}/{pat}", str(local_dir) + "/"],
+                + [f"{self._target()}:{remote}/{safe_pat}", str(local_dir) + "/"],
                 capture_output=True,
                 text=True,
             )

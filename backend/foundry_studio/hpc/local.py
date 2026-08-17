@@ -25,6 +25,7 @@ from foundry_studio.hpc.base import (
     RemoteHandle,
 )
 from foundry_studio.hpc.job_spec import JobSpec
+from foundry_studio.utils import sanitize_job_id
 
 
 class LocalBackend(Backend):
@@ -51,17 +52,18 @@ class LocalBackend(Backend):
             spec.job_id or "",
             str(self.settings.resolved_data_dir()),
         ]
-        log_file = self.settings.resolved_data_dir() / "logs" / f"{spec.job_id}.log"
+        log_file = self.settings.resolved_data_dir() / "logs" / f"{sanitize_job_id(spec.job_id or '')}.log"
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        log_fh = open(log_file, "a", encoding="utf-8")
-        proc = subprocess.Popen(
-            cmd,
-            env=env,
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-        )
-        # The child inherited the fd; we can drop our own reference.
-        log_fh.close()
+        try:
+            log_fh = open(log_file, "a", encoding="utf-8")
+            proc = subprocess.Popen(
+                cmd,
+                env=env,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+            )
+        finally:
+            log_fh.close()
         return RemoteHandle(
             backend=self.name,
             remote_id=str(proc.pid),
@@ -115,7 +117,16 @@ class LocalBackend(Backend):
         dest_dir = Path(dest_dir)
         dest_dir.mkdir(parents=True, exist_ok=True)
         job_id = handle.meta.get("job_id")
-        src = self.settings.resolved_data_dir() / "jobs" / (job_id or "")
+        if job_id:
+            safe_job_id = sanitize_job_id(job_id)
+            src = self.settings.resolved_data_dir() / "jobs" / safe_job_id
+            # Additional check: ensure src is within data_dir
+            try:
+                src.resolve().relative_to(self.settings.resolved_data_dir().resolve())
+            except ValueError:
+                raise ValueError(f"Path traversal attempt in job_id: {job_id!r}")
+        else:
+            src = self.settings.resolved_data_dir() / "jobs" / ""
         out: list[Path] = []
         if src.is_dir():
             for p in sorted(src.rglob("*")):

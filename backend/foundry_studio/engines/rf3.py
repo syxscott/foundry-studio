@@ -58,7 +58,7 @@ class RF3Engine(BaseEngine):
         job_dir = self.ensure_job_dir(job)
 
         # Inputs: prefer uploaded files, else server-side paths in params.
-        input_paths = self._resolve_input_paths(params, job_dir, job)
+        input_paths = self._resolve_input_paths(params)
         if not input_paths:
             raise ValueError("RF3 requires at least one input (FASTA/CIF/PDB)")
 
@@ -81,19 +81,18 @@ class RF3Engine(BaseEngine):
             raise RuntimeError("RF3 completed but produced no output files")
         return EngineResult(outputs=outputs, summary={"model": "rf3"})
 
-    def _resolve_input_paths(
-        self, params: dict[str, Any], job_dir: Any, job: dict[str, Any]
-    ) -> list[str]:
-        paths: list[str] = []
-        for f in self.job_input_files(
-            job, roles={"structure", "input", "sequence", "fasta"}
-        ):
-            candidate = job_dir / f["filename"]
-            if candidate.is_file():
-                paths.append(str(candidate))
+    def _resolve_input_paths(self, params: dict) -> list[Path]:
+        from pathlib import Path as P
+
+        paths: list[P] = []
+        warnings: list[str] = getattr(self, "_warnings", [])
         for raw in params.get("input_paths") or []:
             if isinstance(raw, str) and raw.strip():
-                paths.append(raw)
+                p = P(raw).resolve()
+                if p.exists():
+                    paths.append(p)
+                else:
+                    warnings.append(f"input_paths entry not found: {raw}")
         return paths
 
     @staticmethod

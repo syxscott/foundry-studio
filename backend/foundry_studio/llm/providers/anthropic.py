@@ -112,7 +112,7 @@ class AnthropicProvider(BaseLLMProvider):
         max_tokens: int,
     ) -> dict:
         payload: dict = {
-            "model": model or self.model or "claude-sonnet-4-20250514",
+            "model": model or self.model,
             "messages": list(messages),
             "stream": True,
             "max_tokens": max_tokens,
@@ -169,6 +169,9 @@ class AnthropicProvider(BaseLLMProvider):
             max_tokens or self.default_max_tokens,
         )
         headers = self._headers(api_key=api_key)
+        usage = TokenUsage()
+        finish = FinishReason.STOP
+        emitted_finish = False
         attempts = self.backoff.max_retries + 1
         last_err: BaseException | None = None
         last_err_code: str = LLMError.UNKNOWN
@@ -199,9 +202,6 @@ class AnthropicProvider(BaseLLMProvider):
                                 continue
                             raise err
 
-                        usage = TokenUsage()
-                        finish = FinishReason.STOP
-                        emitted_finish = False
                         current_event = ""
 
                         async for raw_line in resp.aiter_lines():
@@ -228,7 +228,13 @@ class AnthropicProvider(BaseLLMProvider):
                             if current_event not in _ANTHROPIC_STREAMING_EVENTS:
                                 continue
 
-                            if current_event == "content_block_delta":
+                            if current_event == "content_block_start":
+                                block = chunk_data.get("block", {})
+                                if block.get("type") == "cache_creation":
+                                    cache_tokens = block.get("cache_created_input_tokens", 0)
+                                    usage += TokenUsage(cached_tokens=int(cache_tokens or 0))
+
+                            elif current_event == "content_block_delta":
                                 delta = chunk_data.get("delta", {})
                                 if delta.get("type") == "text":
                                     text = delta.get("text", "")

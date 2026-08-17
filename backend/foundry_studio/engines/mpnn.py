@@ -52,6 +52,11 @@ class MPNNEngine(BaseEngine):
         ckpt_name = _VARIANT_CHECKPOINT.get(model_type, "proteinmpnn")
         ckpt_state = model_checkpoint_state(ckpt_name)
         checkpoint_path = ckpt_state["path"] or None
+        if checkpoint_path is None:
+            raise RuntimeError(
+                f"MPNN checkpoint for {ckpt_name!r} is not installed. "
+                f"Install it via POST /checkpoints/install before running."
+            )
 
         self._engine = MPNNInferenceEngine(
             model_type=model_type,

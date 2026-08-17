@@ -97,11 +97,12 @@ async def _chat_sse(planner: Planner, text: str) -> AsyncIterator[str]:
         yield _sse(
             "error",
             {
-                "message": str(exc),
+                "message": "Agent streaming failed",
                 "i18nErrorKey": "error.agent_planner_stream",
-                "errorArgs": {"detail": str(exc)},
+                "errorArgs": {"detail": repr(str(exc)[:200])},
             },
         )
+        return
     yield _sse("done", {})
 
 
