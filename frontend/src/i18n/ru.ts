@@ -405,8 +405,8 @@ export const ru: TranslationKey = {
       tip: "Совет: чтобы удалить API Key, откройте DevTools браузера → Application → Local Storage → очистить.",
       preset: {
         deepseek: "DeepSeek",
-        openai: "OpenAI (GPT-4o-mini)",
-        "openai-gpt4o": "OpenAI (GPT-4o)",
+        openai: "OpenAI (GPT-5.4-mini)",
+        "openai-gpt4o": "OpenAI (GPT-5.6-terra)",
         siliconflow: "SiliconFlow",
         kimi: "Kimi (Moonshot)",
         stepfun: "StepFun",

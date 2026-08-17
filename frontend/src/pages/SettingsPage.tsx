@@ -17,13 +17,13 @@ const PRESETS: Record<string, PresetMeta> = {
   },
   openai: {
     baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini",
+    model: "gpt-5.4-mini",
     icon: "◉",
     category: "cloud",
   },
   "openai-gpt4o": {
     baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4o",
+    model: "gpt-5.6-terra",
     icon: "◉",
     category: "cloud",
   },
