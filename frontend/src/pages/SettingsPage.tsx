@@ -4,31 +4,67 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import type { LlmConfig, LlmSettingsResponse } from "../types/api";
 
-/** Built-in provider presets. */
-const PRESETS: Record<string, { baseUrl: string; model: string }> = {
+/** Built-in OpenAI-compatible provider presets.
+ *  Source: cross-referenced with cc-switch-main provider roster for Chinese LLM endpoints
+ *  that expose a standard /v1/chat/completions interface. */
+type PresetMeta = { baseUrl: string; model: string; icon: string; category: "cloud" | "local" | "custom" };
+const PRESETS: Record<string, PresetMeta> = {
   deepseek: {
     baseUrl: "https://api.deepseek.com/v1",
     model: "deepseek-chat",
+    icon: "⬡",
+    category: "cloud",
   },
   openai: {
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-4o-mini",
+    icon: "◉",
+    category: "cloud",
   },
   "openai-gpt4o": {
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-4o",
+    icon: "◉",
+    category: "cloud",
   },
   siliconflow: {
     baseUrl: "https://api.siliconflow.cn/v1",
     model: "deepseek-ai/DeepSeek-V3",
+    icon: "◈",
+    category: "cloud",
+  },
+  kimi: {
+    // Moonshot AI — OpenAI-compatible endpoint
+    baseUrl: "https://api.moonshot.cn/v1",
+    model: "moonshot-v1-8k",
+    icon: "🌙",
+    category: "cloud",
+  },
+  stepfun: {
+    // 阶跃星辰 — OpenAI-compatible endpoint
+    baseUrl: "https://api.stepfun.com/v1",
+    model: "step-1v-8k",
+    icon: "⬆",
+    category: "cloud",
+  },
+  zhipu: {
+    // 智谱 GLM — OpenAI-compatible endpoint (BigModel API)
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    model: "glm-4-plus",
+    icon: "🔷",
+    category: "cloud",
   },
   ollama: {
     baseUrl: "http://localhost:11434/v1",
     model: "llama3.2",
+    icon: "⬢",
+    category: "local",
   },
   custom: {
     baseUrl: "",
     model: "",
+    icon: "⚙",
+    category: "custom",
   },
 };
 
@@ -53,12 +89,10 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
 
-  // Load backend defaults (read-only, just for display)
   useEffect(() => {
     api.llmSettings()
       .then((d) => {
         setDefaults(d);
-        // Seed from localStorage if empty, otherwise keep user's choice
       })
       .catch(() => {/* non-fatal */})
       .finally(() => setLoadingDefaults(false));
@@ -83,71 +117,115 @@ export function SettingsPage() {
 
   const hasKey = cfg.apiKey.trim().length > 0;
 
+  const cloudPresets = Object.entries(PRESETS).filter(([, v]) => v.category === "cloud");
+  const otherPresets = Object.entries(PRESETS).filter(([, v]) => v.category !== "cloud");
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5 max-w-2xl">
+      {/* Page header */}
       <div>
         <h1 className="text-xl font-semibold text-slate-800">{t("settings.title")}</h1>
-        <p className="text-sm text-slate-500">{t("settings.subtitle")}</p>
+        <p className="text-sm text-slate-500 mt-1">{t("settings.subtitle")}</p>
       </div>
 
-      {/* Presets */}
-      <div className="card">
-        <h2 className="text-base font-semibold text-slate-700 mb-3">{t("settings.llm.presets")}</h2>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(PRESETS).map(([key, _]) => (
-            <button
-              key={key}
-              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                cfg.provider === key
-                  ? "bg-brand-600 text-white border-brand-600"
-                  : "border-surface-border text-slate-600 hover:bg-surface-alt"
-              }`}
-              onClick={() => void handlePreset(key)}
-            >
-              {t(`settings.llm.preset.${key}`, { defaultValue: key })}
-            </button>
-          ))}
+      {/* Provider presets — 3-col compact grid */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">
+          {t("settings.llm.presets")}
+        </h2>
+
+        {/* Primary cloud presets: 3-col */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+          {cloudPresets.map(([key, meta]) => {
+            const isActive = cfg.provider === key;
+            return (
+              <button
+                key={key}
+                onClick={() => void handlePreset(key)}
+                className={
+                  isActive
+                    ? "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border-2 border-brand-500 bg-brand-50 text-brand-700 text-sm font-medium transition-all"
+                    : "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-surface-border bg-white text-slate-600 text-sm hover:border-brand-400 hover:bg-brand-50/50 transition-all"
+                }
+              >
+                <span className={isActive ? "text-brand-600" : "text-slate-400"} aria-hidden="true">
+                  {meta.icon}
+                </span>
+                <span className="truncate">{t(`settings.llm.preset.${key}`, { defaultValue: key })}</span>
+                {isActive && (
+                  <span className="ml-auto text-brand-500 shrink-0" aria-label="已选择">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Secondary / local / custom: 3-col */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {otherPresets.map(([key, meta]) => {
+            const isActive = cfg.provider === key;
+            return (
+              <button
+                key={key}
+                onClick={() => void handlePreset(key)}
+                className={
+                  isActive
+                    ? "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border-2 border-brand-500 bg-brand-50 text-brand-700 text-sm font-medium transition-all"
+                    : "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-surface-border bg-white text-slate-600 text-sm hover:border-brand-400 hover:bg-brand-50/50 transition-all"
+                }
+              >
+                <span className={isActive ? "text-brand-600" : "text-slate-400"} aria-hidden="true">
+                  {meta.icon}
+                </span>
+                <span className="truncate">{t(`settings.llm.preset.${key}`, { defaultValue: key })}</span>
+                {isActive && (
+                  <span className="ml-auto text-brand-500 shrink-0" aria-label="已选择">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Config form */}
-      <div className="card space-y-4">
-        <h2 className="text-base font-semibold text-slate-700">{t("settings.llm.config")}</h2>
+      {/* Manual config */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">
+          {t("settings.llm.config")}
+        </h2>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t("settings.llm.baseUrl")}
-          </label>
-          <input
-            type="url"
-            className="input w-full font-mono text-xs"
-            value={cfg.baseUrl}
-            onChange={(e) => { setCfg((p) => ({ ...p, baseUrl: e.target.value })); setSaved(false); }}
-            placeholder="https://api.openai.com/v1"
-          />
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="field-label">{t("settings.llm.baseUrl")}</label>
+            <input
+              type="url"
+              className="input font-mono text-xs"
+              value={cfg.baseUrl}
+              onChange={(e) => { setCfg((p) => ({ ...p, baseUrl: e.target.value })); setSaved(false); }}
+              placeholder="https://api.openai.com/v1"
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("settings.llm.model")}</label>
+            <input
+              type="text"
+              className="input font-mono text-sm"
+              value={cfg.model}
+              onChange={(e) => { setCfg((p) => ({ ...p, model: e.target.value })); setSaved(false); }}
+              placeholder="gpt-4o-mini"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t("settings.llm.model")}
-          </label>
-          <input
-            type="text"
-            className="input w-full font-mono text-sm"
-            value={cfg.model}
-            onChange={(e) => { setCfg((p) => ({ ...p, model: e.target.value })); setSaved(false); }}
-            placeholder="gpt-4o-mini"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t("settings.llm.apiKey")}
-          </label>
-          <p className="text-xs text-slate-500 mb-2">{t("settings.llm.apiKeyHelp")}</p>
+        <div className="mb-5">
+          <label className="field-label">{t("settings.llm.apiKey")}</label>
+          <p className="text-xs text-slate-500 mt-1">{t("settings.llm.apiKeyHelp")}</p>
           <input
             type="password"
-            className="input w-full font-mono text-sm"
+            className="input font-mono text-sm mt-1"
             value={cfg.apiKey}
             onChange={(e) => { setCfg((p) => ({ ...p, apiKey: e.target.value })); setSaved(false); }}
             placeholder={t("settings.llm.apiKeyPlaceholder")}
@@ -155,14 +233,12 @@ export function SettingsPage() {
           <div className="mt-1.5 flex items-center gap-2">
             <KeyStatus hasKey={hasKey} />
             {!hasKey && (
-              <span className="text-xs text-amber-600">
-                {t("settings.llm.keyRequired")}
-              </span>
+              <span className="text-xs text-amber-600">{t("settings.llm.keyRequired")}</span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex items-center gap-3">
           <button
             className="btn-primary disabled:opacity-50"
             disabled={saving}
@@ -171,29 +247,38 @@ export function SettingsPage() {
             {saving ? t("common.saving") : t("common.save")}
           </button>
           {saved && (
-            <span className="text-sm text-green-600">{t("settings.llm.saved")}</span>
+            <span className="text-sm text-green-600 font-medium">{t("settings.llm.saved")}</span>
           )}
         </div>
       </div>
 
-      {/* Backend defaults info (read-only) */}
+      {/* Backend defaults */}
       {loadingDefaults ? null : defaults ? (
-        <div className="card">
-          <h2 className="text-base font-semibold text-slate-700 mb-2">{t("settings.llm.backendDefaults")}</h2>
-          <p className="text-xs text-slate-500 mb-3">{t("settings.llm.backendDefaultsHelp")}</p>
+        <div className="card p-5">
+          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+            {t("settings.llm.backendDefaults")}
+          </h2>
+          <p className="text-xs text-slate-400 mb-3">{t("settings.llm.backendDefaultsHelp")}</p>
           <div className="bg-surface-alt rounded-lg p-3 space-y-1.5 text-xs font-mono text-slate-600">
-            <p>{t("settings.llm.provider")}: <span className="text-slate-800">{defaults.provider}</span></p>
-            <p>{t("settings.llm.baseUrl")}: <span className="text-slate-800">{defaults.base_url}</span></p>
-            <p>{t("settings.llm.model")}: <span className="text-slate-800">{defaults.model}</span></p>
+            <p>
+              <span className="text-slate-500">{t("settings.llm.provider")}: </span>
+              <span className="text-slate-800">{defaults.provider}</span>
+            </p>
+            <p>
+              <span className="text-slate-500">{t("settings.llm.baseUrl")}: </span>
+              <span className="text-slate-800">{defaults.base_url}</span>
+            </p>
+            <p>
+              <span className="text-slate-500">{t("settings.llm.model")}: </span>
+              <span className="text-slate-800">{defaults.model}</span>
+            </p>
           </div>
-          <p className="text-xs text-slate-400 mt-2">
-            {t("settings.llm.priorityNote")}
-          </p>
+          <p className="text-xs text-slate-400 mt-3">{t("settings.llm.priorityNote")}</p>
         </div>
       ) : null}
 
       {/* Tip */}
-      <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-xs text-blue-700">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-700">
         {t("settings.llm.tip")}
       </div>
     </div>
