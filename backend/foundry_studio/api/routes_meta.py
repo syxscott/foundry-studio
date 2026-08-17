@@ -151,6 +151,7 @@ def llm_settings(
         provider=settings.agent_llm_provider or "openai",
         base_url=settings.agent_llm_base_url,
         model=settings.agent_llm_model or "gpt-5.6-luna",
+        api_format=settings.agent_llm_api_format or "openai_chat",
         configured=first.get("configured", False),
         timeout=settings.agent_llm_timeout,
         retry=settings.agent_llm_retry,
