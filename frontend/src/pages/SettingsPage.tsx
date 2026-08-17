@@ -4,115 +4,166 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import type { LlmConfig, LlmSettingsResponse } from "../types/api";
 
-/** Built-in OpenAI-compatible provider presets.
- *  Sources: cross-referenced with cc-switch-main / volcengine / MiniMax / StepFun official docs (2026-08).
- *  All use standard /v1/chat/completions + Bearer token — no special SDK needed. */
-type PresetMeta = { baseUrl: string; model: string; icon: string; category: "cloud" | "local" | "custom" };
+/** Built-in provider presets.
+ *  Sources: cross-referenced with cc-switch-main (2026-08).
+ *  OpenAI-chat presets use /v1/chat/completions + Bearer token.
+ *  Anthropic presets use /v1/messages + x-api-key header + required max_tokens. */
+type PresetMeta = {
+  baseUrl: string;
+  model: string;
+  icon: string;
+  category: "cloud" | "local" | "custom";
+  apiFormat: "openai_chat" | "anthropic";
+};
 const PRESETS: Record<string, PresetMeta> = {
+  // ── OpenAI-chat (Bearer /v1/chat/completions) ──────────────────────────────────
   deepseek: {
-    // DeepSeek V4 Pro — GA released 2026-08-13; deepseek-chat deprecated 2026-07-24
     baseUrl: "https://api.deepseek.com/v1",
     model: "deepseek-v4-pro",
     icon: "⬡",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   openai: {
-    // gpt-5.4-mini retired from Codex 2026-08-31 → gpt-5.6-luna (recommended replacement)
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-5.6-luna",
     icon: "◉",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   "openai-gpt4o": {
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-5.6-terra",
     icon: "◉",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   siliconflow: {
-    // DeepSeek-V4-Pro via SiliconFlow mirrors; DeepSeek-V3 deprecated 2026-07-24
     baseUrl: "https://api.siliconflow.cn/v1",
     model: "deepseek-ai/DeepSeek-V4-Pro",
     icon: "◈",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   kimi: {
-    // Moonshot AI — OpenAI-compatible; kimi-k3 (July 16 2026, 2.8T, 1M, multimodal, #1 Frontend Code)
+    // Moonshot AI — OpenAI-compatible endpoint
     baseUrl: "https://api.moonshot.cn/v1",
     model: "kimi-k3",
     icon: "🌙",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   stepfun: {
-    // 阶跃星辰 — step-2 (LiveBench国产第一, 128k, coding/agentic); baseUrl also appears as platform.stepfun.com/v1 in docs
     baseUrl: "https://api.stepfun.com/v1",
     model: "step-2",
     icon: "⬆",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   zhipu: {
-    // 智谱 GLM — GLM-5.3 (Aug 14 2026, 编程开源第一, +50% vs GLM-5.2)
-    // ⚠️ API availability confirmed by news; verify in console if calls fail
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
     model: "GLM-5.3",
     icon: "🔷",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   yi: {
-    // 零一万物 — OpenAI-compatible; yi-lightning (性价比), yi-large (旗舰)
     baseUrl: "https://api.lingyiwanwu.com/v1",
     model: "yi-large",
     icon: "✦",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   baichuan: {
-    // 百川智能 — OpenAI-compatible; Baichuan4 (旗舰)
     baseUrl: "https://api.baichuan-ai.com/v1",
     model: "Baichuan4",
     icon: "◈",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   minimax: {
-    // MiniMax — MiniMax-M3 (2026 旗舰, 1M上下文, Agent/Coding), MiniMax-M2.7 (均衡)
     baseUrl: "https://api.minimax.io/v1",
     model: "MiniMax-M3",
     icon: "◆",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   qwen: {
-    // 阿里通义 — compatible-mode; qwen-plus (131K), qwen-plus-0728 (1M hybrid reasoning)
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     model: "qwen-plus",
     icon: "◇",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   "doubao-pro": {
-    // 火山引擎方舟 — Doubao Seed 2.1 Pro 旗舰款 (256k, 深度推理/Agent/多模态)
-    // ⚠️ 模型名 doubao-seed-2-1-pro-260628 未在公开文档确认，建议在 Volcengine 控制台验证
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
     model: "doubao-seed-2-1-pro-260628",
     icon: "🔥",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   "doubao-code": {
-    // 火山引擎方舟 Coding Plan — 专为 Claude Code/Cursor 等编程工具优化
-    // ⚠️ ark-code-latest 未在公开文档确认，建议在 Volcengine 控制台验证
     baseUrl: "https://ark.cn-beijing.volces.com/api/coding",
     model: "ark-code-latest",
     icon: "🔥",
     category: "cloud",
+    apiFormat: "openai_chat",
   },
   ollama: {
     baseUrl: "http://localhost:11434/v1",
     model: "llama3.2",
     icon: "⬢",
     category: "local",
+    apiFormat: "openai_chat",
   },
+  // ── Anthropic (x-api-key /v1/messages + SSE) ───────────────────────────────────
+  "kimi-anthropic": {
+    // Kimi — Anthropic-compatible endpoint via Moonshot
+    baseUrl: "https://api.moonshot.cn/v1",
+    model: "kimi-k3",
+    icon: "🌙",
+    category: "cloud",
+    apiFormat: "anthropic",
+  },
+  "doubao-anthropic": {
+    // 火山引擎方舟 — Doubao Seed 2.1 Pro via Anthropic-compatible endpoint
+    baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+    model: "doubao-seed-2-1-pro-260628",
+    icon: "🔥",
+    category: "cloud",
+    apiFormat: "anthropic",
+  },
+  "packycode": {
+    // PackyCode — Anthropic-compatible coding provider
+    baseUrl: "https://api.packycode.com/v1",
+    model: "claude-3.5-sonnet",
+    icon: "📦",
+    category: "cloud",
+    apiFormat: "anthropic",
+  },
+  "zetaapi": {
+    // ZetaAPI — Anthropic-compatible
+    baseUrl: "https://api.zetaapi.cn/v1",
+    model: "claude-3.5-sonnet",
+    icon: "⚡",
+    category: "cloud",
+    apiFormat: "anthropic",
+  },
+  "claudecn": {
+    // ClaudeCN — Anthropic-compatible Chinese endpoint
+    baseUrl: "https://api.claudecn.com/v1",
+    model: "claude-3.5-sonnet",
+    icon: "🇨🇳",
+    category: "cloud",
+    apiFormat: "anthropic",
+  },
+  // ── Custom ─────────────────────────────────────────────────────────────────────
   custom: {
     baseUrl: "",
     model: "",
     icon: "⚙",
     category: "custom",
+    apiFormat: "openai_chat",
   },
 };
 
@@ -149,7 +200,13 @@ export function SettingsPage() {
   const handlePreset = useCallback((presetKey: string) => {
     const preset = PRESETS[presetKey];
     if (!preset) return;
-    setCfg((prev) => ({ ...prev, provider: presetKey, baseUrl: preset.baseUrl, model: preset.model }));
+    setCfg((prev) => ({
+      ...prev,
+      provider: presetKey,
+      baseUrl: preset.baseUrl,
+      model: preset.model,
+      apiFormat: preset.apiFormat,
+    }));
     setSaved(false);
   }, []);
 
@@ -245,7 +302,7 @@ export function SettingsPage() {
           {t("settings.llm.config")}
         </h2>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
             <label className="field-label">{t("settings.llm.baseUrl")}</label>
             <input
@@ -265,6 +322,17 @@ export function SettingsPage() {
               onChange={(e) => { setCfg((p) => ({ ...p, model: e.target.value })); setSaved(false); }}
               placeholder="gpt-5.6-luna"
             />
+          </div>
+          <div>
+            <label className="field-label">API Format</label>
+            <select
+              className="input text-sm"
+              value={cfg.apiFormat}
+              onChange={(e) => { setCfg((p) => ({ ...p, apiFormat: e.target.value as "openai_chat" | "anthropic" })); setSaved(false); }}
+            >
+              <option value="openai_chat">OpenAI Chat (/v1/chat)</option>
+              <option value="anthropic">Anthropic (/v1/messages)</option>
+            </select>
           </div>
         </div>
 
@@ -319,6 +387,10 @@ export function SettingsPage() {
             <p>
               <span className="text-slate-500">{t("settings.llm.model")}: </span>
               <span className="text-slate-800">{defaults.model}</span>
+            </p>
+            <p>
+              <span className="text-slate-500">API Format: </span>
+              <span className="text-slate-800">{defaults.api_format}</span>
             </p>
           </div>
           <p className="text-xs text-slate-400 mt-3">{t("settings.llm.priorityNote")}</p>

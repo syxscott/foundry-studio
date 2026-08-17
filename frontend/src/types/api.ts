@@ -36,6 +36,7 @@ export interface LlmSettingsResponse {
   provider: string;
   base_url: string;
   model: string;
+  api_format: string;
   configured: boolean;
   timeout: number;
   retry: number;
@@ -47,6 +48,7 @@ export interface LlmConfig {
   baseUrl: string;
   model: string;
   apiKey: string;
+  apiFormat: "openai_chat" | "anthropic";
 }
 
 export interface BackendInfo {
@@ -120,6 +122,7 @@ export interface AgentRunPayload {
   api_key?: string;
   base_url?: string;
   llm_model?: string;
+  api_format?: string;
 }
 
 export interface OutputFile {

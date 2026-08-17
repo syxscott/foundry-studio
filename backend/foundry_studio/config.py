@@ -94,11 +94,14 @@ class Settings(BaseSettings):
     # Enable the in-app conversational agent + external Control API.
     agent_enabled: bool = True
 
-    # --- Agent LLM provider (third-party API, OpenAI-compatible) --------------------
+    # --- Agent LLM provider (third-party API) ------------------------------------
     # When `agent_llm_provider` is empty the planner falls back to the deterministic
-    # heuristic parser (zero external dependencies). When set, it names an
-    # OpenAI-compatible provider (OpenAI, DeepSeek, vLLM, OpenRouter, Ollama's /v1
-    # endpoint, …) reached through `agent_llm_base_url`.
+    # heuristic parser (zero external dependencies). When set, it names a provider
+    # reached through `agent_llm_base_url`.
+    #
+    # `agent_llm_api_format` selects the wire protocol:
+    #   "openai_chat"  — POST {base_url}/v1/chat/completions, Authorization: Bearer
+    #   "anthropic"    — POST {base_url}/v1/messages, x-api-key header
     #
     # The API key is NEVER stored in config — only the *environment-variable name*
     # (a credential-ref) is, and it is resolved on each request. For keyless local
@@ -106,6 +109,7 @@ class Settings(BaseSettings):
     agent_llm_provider: str = "openai"
     agent_llm_base_url: str = "https://api.openai.com/v1"
     agent_llm_api_key_env: str = "OPENAI_API_KEY"
+    agent_llm_api_format: str = "openai_chat"
     agent_llm_model: str = "gpt-5.6-luna"
     agent_llm_models: list[str] = []
     agent_llm_retry: int = 2

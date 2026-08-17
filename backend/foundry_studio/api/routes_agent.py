@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
     api_key: str | None = None  # frontend-provided key; overrides env var
     base_url: str | None = None  # frontend-provided base URL; overrides env var
     model: str | None = None  # frontend-provided model; overrides env var
+    api_format: str | None = None  # "openai_chat" (default) or "anthropic"
 
 
 class RunRequest(BaseModel):
@@ -57,6 +58,7 @@ class RunRequest(BaseModel):
     api_key: str | None = None
     base_url: str | None = None  # user-provided LLM base URL
     llm_model: str | None = None  # user-provided LLM model name
+    api_format: str | None = None  # "openai_chat" (default) or "anthropic"
 
 
 # --------------------------------------------------------------------------- #
@@ -135,7 +137,7 @@ async def chat(
     settings: Settings = Depends(get_settings),
 ) -> StreamingResponse:
     """Stream an NL instruction as tokens, ending with a JobSpec draft (SSE)."""
-    planner = Planner(settings=settings, api_key=payload.api_key, base_url=payload.base_url, model=payload.model)
+    planner = Planner(settings=settings, api_key=payload.api_key, base_url=payload.base_url, model=payload.model, api_format=payload.api_format)
     return StreamingResponse(
         _chat_sse(planner, payload.message),
         media_type="text/event-stream",
@@ -158,7 +160,7 @@ async def run(
 
     # If only free text was given, let the planner resolve model + params.
     if model is None and payload.message:
-        planner = Planner(settings=settings, api_key=payload.api_key, base_url=payload.base_url, model=payload.llm_model)
+        planner = Planner(settings=settings, api_key=payload.api_key, base_url=payload.base_url, model=payload.llm_model, api_format=payload.api_format)
         try:
             plan = await planner.resolve(payload.message)
         except ValueError as exc:

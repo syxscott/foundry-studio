@@ -72,8 +72,14 @@ export const api = {
     get(): LlmConfig {
       try {
         const raw = localStorage.getItem(this.storageKey);
-        return raw ? (JSON.parse(raw) as LlmConfig) : { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-5.6-luna", apiKey: "" };
-      } catch { return { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-5.6-luna", apiKey: "" }; }
+        if (raw) {
+          const cfg = JSON.parse(raw) as LlmConfig;
+          // Backfill apiFormat for configs saved before this field existed
+          if (!cfg.apiFormat) cfg.apiFormat = "openai_chat";
+          return cfg;
+        }
+        return { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-5.6-luna", apiKey: "", apiFormat: "openai_chat" };
+      } catch { return { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-5.6-luna", apiKey: "", apiFormat: "openai_chat" }; }
     },
     set(cfg: LlmConfig): void {
       try { localStorage.setItem(this.storageKey, JSON.stringify(cfg)); } catch { /* quota exceeded */ }
@@ -161,6 +167,7 @@ export const api = {
         api_key: cfg.apiKey || undefined,
         base_url: cfg.baseUrl || undefined,
         model: cfg.model || undefined,
+        api_format: cfg.apiFormat || undefined,
       }),
       signal: handlers.signal,
     })

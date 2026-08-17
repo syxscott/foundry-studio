@@ -150,6 +150,7 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
         api_key: api.llmConfig.get().apiKey || undefined,
         base_url: api.llmConfig.get().baseUrl || undefined,
         llm_model: api.llmConfig.get().model || undefined,
+        api_format: api.llmConfig.get().apiFormat || undefined,
       });
       onSubmitted(job.id);
     } catch (e) {

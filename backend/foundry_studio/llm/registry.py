@@ -12,6 +12,7 @@ import os
 
 from foundry_studio.config import Settings
 from foundry_studio.llm.base import BaseLLMProvider
+from foundry_studio.llm.providers.anthropic import AnthropicProvider
 from foundry_studio.llm.providers.openai_compat import OpenAICompatibleProvider
 
 
@@ -61,24 +62,42 @@ class LLMRegistry:
         provider = (settings.agent_llm_provider or "").strip()
         if not provider:
             return reg
-        base_url = (settings.agent_llm_base_url or "").strip() or (
-            OpenAICompatibleProvider.DEFAULT_BASE_URL
-        )
+        base_url = (settings.agent_llm_base_url or "").strip()
         api_key_env = (settings.agent_llm_api_key_env or "").strip()
-        reg.register(
-            provider,
-            OpenAICompatibleProvider(
-                name=provider,
-                base_url=base_url,
-                api_key_env=api_key_env,
-                model=(settings.agent_llm_model or None),
-                models=list(settings.agent_llm_models or []),
-                retry=int(settings.agent_llm_retry or 0),
-                timeout=float(
-                    getattr(settings, "agent_llm_timeout", 60.0) or 60.0
+        api_format = (settings.agent_llm_api_format or "openai_chat").strip()
+        timeout = float(getattr(settings, "agent_llm_timeout", 60.0) or 60.0)
+        retry = int(settings.agent_llm_retry or 0)
+
+        if api_format == "anthropic":
+            if not base_url:
+                base_url = AnthropicProvider.DEFAULT_BASE_URL
+            reg.register(
+                provider,
+                AnthropicProvider(
+                    name=provider,
+                    base_url=base_url,
+                    api_key_env=api_key_env,
+                    model=(settings.agent_llm_model or None),
+                    models=list(settings.agent_llm_models or []),
+                    timeout=timeout,
+                    retry=retry,
                 ),
-            ),
-        )
+            )
+        else:
+            if not base_url:
+                base_url = OpenAICompatibleProvider.DEFAULT_BASE_URL
+            reg.register(
+                provider,
+                OpenAICompatibleProvider(
+                    name=provider,
+                    base_url=base_url,
+                    api_key_env=api_key_env,
+                    model=(settings.agent_llm_model or None),
+                    models=list(settings.agent_llm_models or []),
+                    retry=retry,
+                    timeout=timeout,
+                ),
+            )
         return reg
 
 

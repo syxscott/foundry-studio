@@ -144,6 +144,7 @@ class LlmSettingsResponse(BaseModel):
     provider: str
     base_url: str
     model: str
+    api_format: str = "openai_chat"
     configured: bool
     timeout: float
     retry: int

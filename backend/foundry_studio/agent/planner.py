@@ -80,11 +80,13 @@ class Planner:
         api_key: str | None = None,
         base_url: str | None = None,
         model: str | None = None,
+        api_format: str | None = None,
     ):
         self.settings = settings
         self.api_key = api_key
         self._base_url_override = base_url
         self._model_override = model
+        self._api_format_override = api_format
 
     # ------------------------------------------------------------------ #
     # Public entry points
@@ -96,14 +98,24 @@ class Planner:
         if self._base_url_override:
             # Build an override provider with the user's base_url/model.
             # This takes priority over the settings-backed provider.
-            from foundry_studio.llm.providers.openai_compat import OpenAICompatibleProvider
+            if self._api_format_override == "anthropic":
+                from foundry_studio.llm.providers.anthropic import AnthropicProvider
 
-            override_provider = OpenAICompatibleProvider(
-                name="override",
-                base_url=self._base_url_override,
-                api_key_env="",  # empty → requires explicit api_key
-                model=self._model_override,
-            )
+                override_provider = AnthropicProvider(
+                    name="override",
+                    base_url=self._base_url_override,
+                    api_key_env="",  # empty → requires explicit api_key
+                    model=self._model_override,
+                )
+            else:
+                from foundry_studio.llm.providers.openai_compat import OpenAICompatibleProvider
+
+                override_provider = OpenAICompatibleProvider(
+                    name="override",
+                    base_url=self._base_url_override,
+                    api_key_env="",  # empty → requires explicit api_key
+                    model=self._model_override,
+                )
             # Replace the default provider with the override.
             reg._providers.clear()
             reg.register("override", override_provider)
