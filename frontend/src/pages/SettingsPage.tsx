@@ -35,22 +35,25 @@ const PRESETS: Record<string, PresetMeta> = {
   },
   kimi: {
     // Moonshot AI — OpenAI-compatible endpoint
+    // kimi-k3 (1M, multimodal, latest), kimi-k2.6 (256k, recommended, agentic/coding)
     baseUrl: "https://api.moonshot.cn/v1",
-    model: "moonshot-v1-8k",
+    model: "kimi-k2.6",
     icon: "🌙",
     category: "cloud",
   },
   stepfun: {
     // 阶跃星辰 — OpenAI-compatible endpoint
+    // step-3.5-flash (2026-01, latest), step-2 (LiveBench国产第一, 128k)
     baseUrl: "https://api.stepfun.com/v1",
-    model: "step-1v-8k",
+    model: "step-2",
     icon: "⬆",
     category: "cloud",
   },
   zhipu: {
     // 智谱 GLM — OpenAI-compatible endpoint (BigModel API)
+    // GLM-5.2 (2026-06, 旗舰, 1M上下文) / GLM-4.7-Flash (免费)
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
-    model: "glm-4-plus",
+    model: "GLM-5.2",
     icon: "🔷",
     category: "cloud",
   },
