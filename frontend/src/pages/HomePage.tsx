@@ -12,10 +12,21 @@ function RecentExperiments({ onOpen }: { onOpen: (id: string) => void }) {
   const { t } = useTranslation();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   useEffect(() => {
-    api
-      .listJobs()
-      .then((r) => setJobs(r.items.slice(0, 6)))
-      .catch(() => setJobs([]));
+    let alive = true;
+    const load = () => {
+      api
+        .listJobs()
+        .then((r) => alive && setJobs(r.items.slice(0, 6)))
+        .catch(() => alive && setJobs([]));
+    };
+    load();
+    // 5 s is short enough that a "running" job moves visibly and long
+    // enough that 6 small JSON responses are negligible.
+    const id = setInterval(load, 5000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, []);
   if (!jobs) return <div className="card p-5 text-center text-slate-400"><span className="spinner text-brand-500" /></div>;
   if (jobs.length === 0) {
@@ -27,7 +38,13 @@ function RecentExperiments({ onOpen }: { onOpen: (id: string) => void }) {
   }
   return (
     <div className="card p-5">
-      <h3 className="text-sm font-semibold text-slate-700 mb-3">{t("home.recent")}</h3>
+      <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+        {t("home.recent")}
+        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-normal">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-soft-pulse" />
+          live
+        </span>
+      </h3>
       <ul className="divide-y divide-surface-border">
         {jobs.map((j) => (
           <li key={j.id}>

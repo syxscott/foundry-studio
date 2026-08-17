@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiClientError } from "../api";
+import { ProgressBar } from "../components/ProgressBar";
 import { StatusBadge } from "../components/StatusBadge";
 import { StructureViewer } from "../components/StructureViewer";
 import type { Job } from "../types/api";
@@ -33,7 +34,8 @@ export function JobDetailPage({
       if (j.logs_url || j.status === "running" || j.status === "succeeded" || j.status === "failed") {
         try {
           const lr = await api.getLogs(jobId);
-          if (lr.logs !== logs) setLogs(lr.logs);
+          // setLogs is functional, so we don't need `logs` in deps
+          setLogs((prev) => (prev === lr.logs ? prev : lr.logs));
         } catch {
           /* logs endpoint may 404 for draft jobs */
         }
@@ -42,17 +44,25 @@ export function JobDetailPage({
       if (e instanceof ApiClientError && e.status === 404) setNotFound(true);
       else setActionError(e instanceof ApiClientError ? e.body.message : String(e));
     }
-  }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [jobId]);
 
   useEffect(() => {
+    // Reset transient state when navigating between jobs.
+    setJob(null);
+    setLogs("");
+    setNotFound(false);
+    setActionError(null);
+    lastLogLenRef.current = 0;
     void load();
     const id = setInterval(() => void load(), POLL_MS);
     return () => clearInterval(id);
   }, [load]);
 
-  // Auto-scroll the log panel on new content.
+  // Auto-scroll the log panel to bottom whenever the content changes.
+  // We compare new vs old length so the effect fires both on growth and on
+  // truncation (e.g. the engine rotated the log file).
   useEffect(() => {
-    if (logRef.current && logs.length > lastLogLenRef.current) {
+    if (logRef.current && logs.length !== lastLogLenRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
     lastLogLenRef.current = logs.length;
@@ -154,10 +164,14 @@ export function JobDetailPage({
           label={t("jobDetail.createdAt")}
           value={new Date(job.created_at).toLocaleString()}
         />
-        <Meta
-          label={t("jobDetail.progress")}
-          value={job.progress != null ? `${job.progress}%` : "—"}
-        />
+        <div className="bg-white border border-surface-border rounded-lg px-3 py-2 shadow-sm">
+          <p className="text-xs text-slate-400 mb-1.5">{t("jobDetail.progress")}</p>
+          <ProgressBar
+            progress={job.progress}
+            startedAt={job.started_at ?? job.created_at}
+            status={job.status}
+          />
+        </div>
         {job.started_at && <Meta label={t("jobDetail.startedAt")} value={new Date(job.started_at).toLocaleString()} />}
         {job.finished_at && <Meta label={t("jobDetail.finishedAt")} value={new Date(job.finished_at).toLocaleString()} />}
       </div>

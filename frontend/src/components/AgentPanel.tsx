@@ -54,7 +54,10 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
   // and finally to the raw string.
   const renderError = (): string => {
     if (errorKey) {
-      const template = t(`errors.${errorKey}` as never, errorArgs ?? {});
+      // i18next's TFunction expects string|number|boolean args; server-side
+      // errorArgs is `Record<string, unknown>`, so we narrow with a cast.
+      const args = (errorArgs ?? {}) as Record<string, string | number | boolean>;
+      const template = t(`errors.${errorKey}` as never, args);
       if (template && template !== `errors.${errorKey}`) return template as string;
     }
     return error ?? "";
@@ -211,7 +214,7 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
 
       {/* Live "thinking" stream from the LLM. */}
       {!plan && (streaming || thinking) && (
-        <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/40 p-4">
+        <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/40 p-4 animate-fade-in-up">
           <div className="flex items-center gap-2 mb-2">
             <span className="flex gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
@@ -221,8 +224,14 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
             <span className="text-xs uppercase tracking-wide text-brand-600 font-semibold">
               {t("agent.thinking")}
             </span>
+            {streaming && (
+              <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-brand-500 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-soft-pulse" />
+                live
+              </span>
+            )}
           </div>
-          <pre className="text-sm text-slate-700 whitespace-pre-wrap break-words font-mono leading-relaxed">
+          <pre className="text-sm text-slate-700 whitespace-pre-wrap break-words font-mono leading-relaxed max-h-48 overflow-auto scroll-thin">
             {thinking || "…"}
           </pre>
         </div>

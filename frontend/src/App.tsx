@@ -5,6 +5,7 @@ import { api } from "./api";
 import BackendStatus from "./components/BackendStatus";
 import { SimulationBanner } from "./components/SimulationBanner";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { Toaster } from "./components/Toaster";
 import type { HealthResponse } from "./types/api";
 import {
   EnvironmentPage,
@@ -139,6 +140,8 @@ export default function App() {
           {health && <span className="ml-2 text-slate-300">v{health.version}</span>}
         </p>
       </footer>
+
+      <Toaster />
     </div>
   );
 }

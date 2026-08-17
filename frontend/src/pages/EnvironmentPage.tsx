@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiClientError } from "../api";
+import { toast } from "../components/Toaster";
 import type { CheckpointInfo } from "../types/api";
 
 function formatSize(
@@ -49,9 +50,12 @@ export function EnvironmentPage() {
     try {
       await api.installCheckpoint(name);
       setNote({ kind: "ok", text: t("environment.installedOk") });
+      toast.success(t("environment.installedOk"));
       await load();
     } catch (e) {
-      setNote({ kind: "err", text: e instanceof ApiClientError ? e.body.message : String(e) });
+      const msg = e instanceof ApiClientError ? e.body.message : String(e);
+      setNote({ kind: "err", text: msg });
+      toast.error(t("environment.installFailed", { name }), msg);
     } finally {
       setInstalling(null);
     }

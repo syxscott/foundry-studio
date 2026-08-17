@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiClientError } from "../api";
 import { StatusBadge } from "../components/StatusBadge";
+import { ProgressBar } from "../components/ProgressBar";
+import { toast } from "../components/Toaster";
 import type { Job, JobStatus } from "../types/api";
 
 const POLL_MS = 3000;
@@ -12,18 +14,55 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
+  // Track the last seen status of every job so we can fire a toast exactly once
+  // when it transitions to a terminal state.
+  const lastStatusRef = useRef<Map<string, JobStatus>>(new Map());
+  const firstLoadRef = useRef(true);
 
   const load = useCallback(async () => {
     try {
       const res = await api.listJobs(filter === "all" ? undefined : filter);
       setJobs(res.items);
       setError(null);
+
+      // Fire a toast when a job we saw in a previous poll moves to succeeded /
+      // failed / canceled. We skip the very first load to avoid replaying
+      // completions that happened before the page was opened.
+      if (!firstLoadRef.current) {
+        for (const job of res.items) {
+          const prev = lastStatusRef.current.get(job.id);
+          if (
+            prev &&
+            prev !== job.status &&
+            (job.status === "succeeded" ||
+              job.status === "failed" ||
+              job.status === "canceled")
+          ) {
+            const label = job.name || job.id.slice(0, 8);
+            if (job.status === "succeeded") {
+              toast.success(t("jobs.toast.succeeded", { name: label }));
+            } else if (job.status === "failed") {
+              toast.error(t("jobs.toast.failed", { name: label }));
+            } else {
+              toast.info(t("jobs.toast.canceled", { name: label }));
+            }
+          }
+          lastStatusRef.current.set(job.id, job.status);
+        }
+      } else {
+        for (const job of res.items) {
+          lastStatusRef.current.set(job.id, job.status);
+        }
+        firstLoadRef.current = false;
+      }
     } catch (e) {
       setError(e instanceof ApiClientError ? e.body.message : String(e));
     }
-  }, [filter]);
+  }, [filter, t]);
 
   useEffect(() => {
+    firstLoadRef.current = true;
+    lastStatusRef.current.clear();
     void load();
     const id = setInterval(() => void load(), POLL_MS);
     return () => clearInterval(id);
@@ -50,25 +89,45 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
   };
 
   const filters: (JobStatus | "all")[] = ["all", "queued", "running", "succeeded", "failed", "canceled"];
+  // Per-status counts derived from the current page's jobs.  Cheap and
+  // good enough for the badge UX; the server-side total is also returned
+  // in `total` if we ever want exact counts.
+  const counts: Record<string, number> = { all: jobs?.length ?? 0 };
+  for (const j of jobs ?? []) counts[j.status] = (counts[j.status] ?? 0) + 1;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in-up">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-slate-800">{t("jobs.title")}</h1>
         <div className="flex gap-1 flex-wrap">
-          {filters.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === f
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "bg-white border border-surface-border text-slate-600 hover:bg-surface-alt"
-              }`}
-            >
-              {f === "all" ? t("jobs.filterAll") : t(`jobs.status.${f}`)}
-            </button>
-          ))}
+          {filters.map((f) => {
+            const active = filter === f;
+            const count = counts[f] ?? 0;
+            return (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "bg-white border border-surface-border text-slate-600 hover:bg-surface-alt"
+                }`}
+              >
+                <span>{f === "all" ? t("jobs.filterAll") : t(`jobs.status.${f}`)}</span>
+                <span
+                  className={`text-[10px] leading-none px-1.5 py-0.5 rounded-full ${
+                    active
+                      ? "bg-white/20 text-white"
+                      : count > 0
+                        ? "bg-slate-200 text-slate-600"
+                        : "bg-slate-100 text-slate-400"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -105,8 +164,16 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
                   </td>
                   <td className="px-4 py-3 text-slate-600 font-mono text-xs">{job.model}</td>
                   <td className="px-4 py-3"><StatusBadge status={job.status} /></td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {job.status === "running" && job.progress != null ? `${job.progress}%` : "—"}
+                  <td className="px-4 py-3 text-slate-600 min-w-[140px]">
+                    {job.status === "running" || job.status === "queued" ? (
+                      <ProgressBar
+                        progress={job.progress}
+                        startedAt={job.started_at ?? job.created_at}
+                        status={job.status}
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{new Date(job.created_at).toLocaleString()}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">

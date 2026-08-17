@@ -77,3 +77,40 @@ body {
 .scroll-thin::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Progress bar indeterminate slide (used while a job is queued or running
+   without a numeric progress). Pure CSS — no extra dep. */
+@keyframes indeterminate-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.animate-indeterminate {
+  animation: indeterminate-slide 1.4s ease-in-out infinite;
+}
+
+/* Slow page-fade-in for transitions between routes. */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.32s ease-out;
+}
+
+/* Toast slide-in from the right. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-toast-in {
+  animation: toast-in 0.24s ease-out;
+}
+
+/* Subtle pulse for "live" data: job running, SSE connected, etc. */
+@keyframes soft-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.animate-soft-pulse {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
