@@ -12,13 +12,15 @@ import {
   HomePage,
   JobDetailPage,
   JobsPage,
+  DesignSessionPage,
 } from "./pages";
 
 type Route =
   | { name: "home" }
   | { name: "jobs" }
   | { name: "job"; id: string }
-  | { name: "environment" };
+  | { name: "environment" }
+  | { name: "design"; id?: string };
 
 function parseHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, "");
@@ -28,6 +30,10 @@ function parseHash(): Route {
     return { name: "jobs" };
   }
   if (parts[0] === "environment") return { name: "environment" };
+  if (parts[0] === "design") {
+    if (parts[1]) return { name: "design", id: parts[1] };
+    return { name: "design" };
+  }
   return { name: "home" };
 }
 
@@ -84,7 +90,8 @@ export default function App() {
     if (r.name === "home") window.location.hash = "#/";
     else if (r.name === "jobs") window.location.hash = "#/jobs";
     else if (r.name === "job") window.location.hash = `#/jobs/${r.id}`;
-    else window.location.hash = "#/environment";
+    else if (r.name === "environment") window.location.hash = "#/environment";
+    else if (r.name === "design") window.location.hash = r.id ? `#/design/${r.id}` : "#/design";
   };
 
   const navClass = (active: boolean) =>
@@ -112,6 +119,9 @@ export default function App() {
             <button className={navClass(route.name === "jobs" || route.name === "job")} onClick={() => navigate({ name: "jobs" })}>
               {t("app.nav.jobs")}
             </button>
+            <button className={navClass(route.name === "design")} onClick={() => navigate({ name: "design" })}>
+              {t("designSession.navButton")}
+            </button>
             <button className={navClass(route.name === "environment")} onClick={() => navigate({ name: "environment" })}>
               {t("app.nav.environment")}
             </button>
@@ -132,6 +142,9 @@ export default function App() {
           <JobDetailPage jobId={route.id} onBack={() => navigate({ name: "jobs" })} />
         )}
         {route.name === "environment" && <EnvironmentPage />}
+        {route.name === "design" && (
+          <DesignSessionPage sessionId={route.id ?? null} />
+        )}
       </main>
 
       <footer className="border-t border-surface-border py-5 text-center text-xs text-slate-400 bg-white/60">
