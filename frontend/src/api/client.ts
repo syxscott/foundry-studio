@@ -148,8 +148,10 @@ export const api = {
 
   /**
    * Stream the agent chat endpoint (Server-Sent Events). Token deltas arrive via
-   * `onToken`; the final structured plan via `onPlan`. Falls back gracefully: if
-   * the LLM is unavailable the server still emits a single `plan` event (heuristic).
+   * `onToken`; tool calls via `onToolCall` / `onToolResult`; the final
+   * structured plan via `onPlan`. Falls back gracefully: if the LLM is unavailable
+   * the server still emits a single `plan` event (heuristic).
+   *
    * Errors carry an `i18nErrorKey` + `errorArgs` payload (when the server
    * provides one) so the UI can render the localized string from its own
    * catalog without parsing the human-readable `message`.
@@ -162,6 +164,8 @@ export const api = {
     lang: string,
     handlers: {
       onToken?: (text: string) => void;
+      onToolCall?: (payload: { toolCallId: string; toolName: string; arguments: Record<string, unknown> }) => void;
+      onToolResult?: (payload: { toolCallId: string; ok: boolean; result?: unknown; error?: string }) => void;
       onPlan?: (plan: AgentPlan) => void;
       onDone?: () => void;
       onError?: (
@@ -170,6 +174,7 @@ export const api = {
       ) => void;
       signal?: AbortSignal;
     },
+    tools?: { type: "function"; function: { name: string; description?: string; parameters: Record<string, unknown> } }[],
   ): void => {
     const cfg = api.llmConfig.get();
 
@@ -208,6 +213,7 @@ export const api = {
           base_url: cfg.baseUrl || undefined,
           model: cfg.model || undefined,
           api_format: cfg.apiFormat || undefined,
+          tools: tools ?? undefined,
         }),
         signal: fusedSignal,
       })
@@ -308,6 +314,8 @@ function _handleSSEEvent(
   ev: { event?: string; data?: string },
   handlers: {
     onToken?: (text: string) => void;
+    onToolCall?: (payload: { toolCallId: string; toolName: string; arguments: Record<string, unknown> }) => void;
+    onToolResult?: (payload: { toolCallId: string; ok: boolean; result?: unknown; error?: string }) => void;
     onPlan?: (plan: AgentPlan) => void;
     onError?: (
       message: string,
@@ -325,6 +333,12 @@ function _handleSSEEvent(
 
   if (event === "token" && data && typeof (data as { text?: string }).text === "string") {
     handlers.onToken?.((data as { text: string }).text);
+  } else if (event === "tool-call" && data) {
+    const d = data as { toolCallId?: string; toolName?: string; arguments?: Record<string, unknown> };
+    handlers.onToolCall?.({ toolCallId: d.toolCallId ?? "", toolName: d.toolName ?? "", arguments: d.arguments ?? {} });
+  } else if (event === "tool-result" && data) {
+    const d = data as { toolCallId?: string; ok?: boolean; result?: unknown; error?: string };
+    handlers.onToolResult?.({ toolCallId: d.toolCallId ?? "", ok: d.ok ?? false, result: d.result, error: d.error });
   } else if (event === "plan" && data) {
     handlers.onPlan?.(data as AgentPlan);
   } else if (event === "error") {

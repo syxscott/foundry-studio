@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from foundry_studio import __version__
 from foundry_studio.agent.planner import Planner
+from foundry_studio.agent.tool_agent import ToolAgent
 from foundry_studio.api.deps import get_db, get_manager, get_settings
 from foundry_studio.api.errors import ApiError
 from foundry_studio.config import Settings
@@ -29,6 +30,7 @@ from foundry_studio.engines import models as model_catalog
 from foundry_studio.joblifecycle import JobOrchestrator
 from foundry_studio.llm.registry import build_registry
 from foundry_studio.schemas import JobRead
+from foundry_studio.tools import ToolRegistry
 
 router = APIRouter()
 
@@ -43,6 +45,7 @@ class ChatRequest(BaseModel):
     base_url: str | None = None  # frontend-provided base URL; overrides env var
     model: str | None = None  # frontend-provided model; overrides env var
     api_format: str | None = None  # "openai_chat" (default) or "anthropic"
+    tools: list[dict] | None = None  # OpenAI tool schemas; None = text-only planning
 
 
 class RunRequest(BaseModel):
@@ -69,19 +72,63 @@ def _sse(event: str, data: dict[str, Any]) -> str:
 
 
 async def _chat_sse(planner: Planner, text: str) -> AsyncIterator[str]:
-    """Translate planner stream events into an SSE byte stream.
+    """Translate Planner stream events into an SSE byte stream.
 
-    Errors are emitted as ``event: error`` with both a localized
-    ``message`` (server-side fallback) and a stable ``i18nErrorKey`` +
-    ``errorArgs`` pair so the frontend can render from its own
-    catalog without re-implementing the message key contract used by
-    the rest of the API.
+    Handles ``token``, ``plan``, and ``error`` events from the text-only Planner.
     """
     try:
         async for ev in planner.plan_stream(text):
             kind = ev.get("type")
             if kind == "token":
                 yield _sse("token", {"text": ev.get("text", "")})
+            elif kind == "plan":
+                yield _sse("plan", ev.get("plan", {}))
+            elif kind == "error":
+                yield _sse(
+                    "error",
+                    {
+                        "message": ev.get("message", "error"),
+                        "i18nErrorKey": "error.agent_planner_stream",
+                        "errorArgs": {},
+                    },
+                )
+    except Exception as exc:  # noqa: BLE001
+        yield _sse(
+            "error",
+            {
+                "message": "Agent streaming failed",
+                "i18nErrorKey": "error.agent_planner_stream",
+                "errorArgs": {"detail": repr(str(exc)[:200])},
+            },
+        )
+        return
+    yield _sse("done", {})
+
+
+async def _tool_agent_sse(agent: ToolAgent, text: str) -> AsyncIterator[str]:
+    """Translate ToolAgent stream events into an SSE byte stream.
+
+    Handles ``token``, ``tool-call``, ``tool-result``, ``plan``, and ``error``
+    events from the tool-capable agent.
+    """
+    try:
+        async for ev in agent.run(text):
+            kind = ev.get("type")
+            if kind == "token":
+                yield _sse("token", {"text": ev.get("text", "")})
+            elif kind == "tool-call":
+                yield _sse("tool-call", {
+                    "toolCallId": ev.get("toolCallId", ""),
+                    "toolName": ev.get("toolName", ""),
+                    "arguments": ev.get("arguments", {}),
+                })
+            elif kind == "tool-result":
+                yield _sse("tool-result", {
+                    "toolCallId": ev.get("toolCallId", ""),
+                    "ok": ev.get("ok", False),
+                    "result": ev.get("result"),
+                    "error": ev.get("error"),
+                })
             elif kind == "plan":
                 yield _sse("plan", ev.get("plan", {}))
             elif kind == "error":
@@ -129,6 +176,8 @@ def capabilities(
             }
             for m in model_catalog.all_models()
         ],
+        "tools": ToolRegistry.get_all_schemas(),
+        "tool_checks": ToolRegistry.get_checks(),
     }
 
 
@@ -137,8 +186,32 @@ async def chat(
     payload: ChatRequest,
     settings: Settings = Depends(get_settings),
 ) -> StreamingResponse:
-    """Stream an NL instruction as tokens, ending with a JobSpec draft (SSE)."""
-    planner = Planner(settings=settings, api_key=payload.api_key, base_url=payload.base_url, model=payload.model, api_format=payload.api_format)
+    """Stream an NL instruction as tokens, ending with a JobSpec draft (SSE).
+
+    When ``payload.tools`` is provided, the ToolAgent handles tool-calling
+    during the conversation.  Otherwise falls back to the text-only Planner.
+    """
+    if payload.tools:
+        agent = ToolAgent(
+            settings=settings,
+            tools=payload.tools,
+            api_key=payload.api_key,
+            base_url=payload.base_url,
+            model=payload.model,
+            api_format=payload.api_format,
+        )
+        return StreamingResponse(
+            _tool_agent_sse(agent, payload.message),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    planner = Planner(
+        settings=settings,
+        api_key=payload.api_key,
+        base_url=payload.base_url,
+        model=payload.model,
+        api_format=payload.api_format,
+    )
     return StreamingResponse(
         _chat_sse(planner, payload.message),
         media_type="text/event-stream",

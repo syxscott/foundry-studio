@@ -221,11 +221,18 @@ class StreamChunk:
     - ``"text"`` carries a single text delta (``text`` set).
     - ``"usage"`` carries token accounting (``usage`` set).
     - ``"finish"`` carries the final stop reason (``finish_reason`` set).
+    - ``"tool_call"`` carries a tool call delta (``tool_call`` set).
     """
-    type: str  # "text" | "usage" | "finish"
+    type: str  # "text" | "usage" | "finish" | "tool_call"
     text: str | None = None
     usage: TokenUsage | None = None
     finish_reason: FinishReason | None = None
+    # Tool call chunk: id, name, arguments (JSON string)
+    tool_call_id: str | None = None
+    tool_call_name: str | None = None
+    tool_call_arguments: str | None = None
+    # For partial tool call arguments (Anthropic streaming JSON)
+    is_partial: bool = False
 
 
 @dataclass

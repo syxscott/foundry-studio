@@ -49,6 +49,7 @@ dev = [
 
 [project.scripts]
 foundry-studio = "foundry_studio.cli:app"
+foundry-mcp = "foundry_studio.mcp.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend/foundry_studio"]

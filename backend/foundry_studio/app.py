@@ -16,14 +16,22 @@ from foundry_studio.api.errors import register_exception_handlers
 from foundry_studio.config import Settings, get_settings
 from foundry_studio.db import StudioDB
 from foundry_studio.joblifecycle import JobOrchestrator
+from foundry_studio.session import SessionStore
+
+# Import tools package to trigger ToolRegistry registration at startup.
+from foundry_studio import tools  # noqa: F401
 
 logger = logging.getLogger("foundry_studio.api")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle: start JobOrchestrator on startup, stop on shutdown."""
+    """Manage application lifecycle: start JobOrchestrator + init session store on startup; stop on shutdown."""
     # Startup: manager is already started in create_app()
+    session_store: SessionStore | None = getattr(app.state, "session_store", None)
+    if session_store is not None:
+        session_store.init()
+        logger.info("Session store initialized.")
     yield
     # Shutdown: gracefully stop the JobOrchestrator
     manager = getattr(app.state, "manager", None)
@@ -53,6 +61,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db = db
     app.state.manager = manager
+
+    # Session store for multi-turn conversations
+    session_store = SessionStore(data_dir / "sessions.db")
+    app.state.session_store = session_store
 
     register_exception_handlers(app)
 
