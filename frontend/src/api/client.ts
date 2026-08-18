@@ -28,25 +28,34 @@ export class ApiClientError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
-  if (!res.ok) {
-    let body: ApiErrorBody;
-    try {
-      body = (await res.json()) as ApiErrorBody;
-    } catch {
-      body = {
-        message_key: "error.unknown",
-        params: { detail: await res.text().catch(() => "") },
-        message: `HTTP ${res.status}`,
-      };
+async function request<T>(path: string, init?: RequestInit, timeoutMs = 30000): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...init,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      let body: ApiErrorBody;
+      try {
+        body = (await res.json()) as ApiErrorBody;
+      } catch {
+        body = {
+          message_key: "error.unknown",
+          params: { detail: await res.text().catch(() => "") },
+          message: `HTTP ${res.status}`,
+        };
+      }
+      throw new ApiClientError(res.status, body);
     }
-    throw new ApiClientError(res.status, body);
+    return (await res.json()) as T;
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
   }
-  return (await res.json()) as T;
 }
 
 export const api = {

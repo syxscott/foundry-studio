@@ -72,13 +72,14 @@ export function ProgressBar({
       <div className="space-y-1">
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
           <span>{t(`jobs.status.${status}` as never)}</span>
+          {progress !== null && progress !== undefined && (
+            <span className="text-slate-400">({Math.round(progress)}%)</span>
+          )}
         </div>
         <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className={`h-full rounded-full ${
-              status === "failed" ? "bg-red-400" : "bg-slate-400"
-            }`}
-            style={{ width: `${progress ?? 0}%` }}
+            className={`h-full rounded-full ${status === "failed" ? "bg-red-400" : "bg-slate-400"}`}
+            style={{ width: "100%" }}
           />
         </div>
       </div>
@@ -90,8 +91,8 @@ export function ProgressBar({
   const startMs = startedAt ? new Date(startedAt).getTime() : null;
   const elapsedSec = startMs ? Math.max(0, (now - startMs) / 1000) : 0;
   const eta =
-    startMs && pct > 1 && pct < 100
-      ? formatDuration((elapsedSec * (100 - pct)) / pct)
+    startMs && pct > 1 && pct < 100 && elapsedSec > 30
+      ? formatDuration(Math.min((elapsedSec * (100 - pct)) / pct, 7200)) // cap at 2h
       : null;
   const elapsed = startMs ? formatDuration(elapsedSec) : null;
 
@@ -100,9 +101,9 @@ export function ProgressBar({
       <div className="flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <span className="font-mono text-slate-700">{Math.round(pct)}%</span>
-          {elapsed && <span>elapsed {elapsed}</span>}
+          {elapsed && <span>{t("common.elapsed")} {elapsed}</span>}
         </div>
-        {eta && <span>ETA {eta}</span>}
+        {eta && <span>{t("common.eta")} {eta}</span>}
       </div>
       <div
         className="h-1.5 rounded-full bg-slate-100 overflow-hidden"

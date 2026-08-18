@@ -48,6 +48,13 @@ export const ja: TranslationKey = {
     llmOff: "外部 LLM 未接続（ヒューリスティック解析）",
     llmOk: "接続済み: {{name}}",
     llmNoKey: "{{name}}: API キー未設定",
+    planLlmmNote: "AI 生成プラン — 送信前にパラメータを確認してください",
+    example: {
+      1: "RFD3 で 80 残基のbinderを設計、A12/B34 をホットスポット、5 個生成",
+      2: "Predict the structure of this protein with RF3",
+      3: "ProteinMPNN で 1abc.pdb のシーケンス設計、温度 0.2",
+      4: "RFD3na で核酸結合蛋白質 3 個生成",
+    },
   },
   models: {
     rfd3: {
@@ -394,6 +401,7 @@ export const ja: TranslationKey = {
       keySet: "設定済み",
       keyMissing: "未設定",
       keyRequired: "AI機能を使用するにはAPI Keyが必要です",
+      modelRequired: "このプリセットにはモデル名が必要です",
       notConfigured: "無効",
       apiKey: "API Key",
       apiKeyHelp: "ブラウザのlocalStorageにのみ保存されます。サーバーには送信されません。",
@@ -478,6 +486,10 @@ export const ja: TranslationKey = {
     next: "次へ",
     submit: "送信",
     serverUnreachable: "バックエンドに接続できません。foundry-studio が起動しているか確認してください。",
+    elapsed: "経過",
+    eta: "残り",
+    kda: "kDa",
+    dismiss: "閉じる",
   },
   health: {
     gpu: "GPU",
@@ -545,6 +557,8 @@ export const ja: TranslationKey = {
       resolvedBy: "{{resolver}}で解決",
       jobStatus: "ジョブ状態",
       candidates: "{{count}}件の候補",
+      live: "ライブ",
+      streaming: "ストリーミング中…",
     },
     candidates: {
       title: "候補",
@@ -576,6 +590,7 @@ export const ja: TranslationKey = {
         length: "長さ",
         mw: "分子量",
         pI: "等電点",
+        kda: "kDa",
       },
       sequenceAlignment: "配列アライメント",
       truncated: "+{{count}}件",

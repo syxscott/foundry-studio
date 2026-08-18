@@ -99,7 +99,7 @@ function ChatMessage({
           {isStreaming && (
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-              <span className="text-xs text-brand-500">Streaming…</span>
+              <span className="text-xs text-brand-500">{t("designSession.round.streaming", { defaultValue: "Streaming…" })}</span>
             </span>
           )}
         </div>

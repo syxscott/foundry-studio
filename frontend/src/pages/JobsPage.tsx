@@ -132,15 +132,31 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-3 py-2">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-3 py-2 flex items-center justify-between gap-2">
+          <span className="flex-1">{error}</span>
+          <button className="text-xs font-medium text-red-700 hover:text-red-800 underline shrink-0" onClick={() => void load()}>
+            {t("common.retry")}
+          </button>
+        </div>
       )}
 
       {jobs === null ? (
-        <p className="text-slate-400 py-10 text-center">{t("common.loading")}</p>
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+        <div className="spinner text-brand-500" />
+        <span className="text-sm text-slate-400">{t("common.loading")}</span>
+      </div>
       ) : jobs.length === 0 ? (
-        <p className="text-slate-400 py-10 text-center">
-          {filter === "all" ? t("jobs.empty") : t("jobs.noJobs")}
-        </p>
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <svg className="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m4 4h10m-4-4v4m-5 4h.01M9 19h6" />
+          </svg>
+          <p className="text-slate-400 text-sm">
+            {filter === "all" ? t("jobs.empty") : t("jobs.noJobs")}
+          </p>
+          {filter === "all" && (
+            <a href="#/" className="text-brand-600 text-sm hover:underline">{t("home.title")}</a>
+          )}
+        </div>
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
@@ -177,9 +193,6 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{new Date(job.created_at).toLocaleString()}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button className="text-brand-600 text-xs hover:underline mr-2" onClick={() => onOpen(job.id)}>
-                      {t("jobs.view")}
-                    </button>
                     {(job.status === "queued" || job.status === "running") && (
                       <button className="text-amber-600 text-xs hover:underline mr-2" onClick={() => void handleCancel(job)}>
                         {t("jobs.cancel")}

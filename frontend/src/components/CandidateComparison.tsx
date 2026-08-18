@@ -80,8 +80,9 @@ function StructureViewerPanel({
     });
     stageRef.current = stage;
 
+    const ext = url.split(".").pop()?.toLowerCase() || "cif";
     stage
-      .loadFile(url, { ext: "cif" })
+      .loadFile(url, { ext })
       .then((component) => {
         const structure = component as NGL.StructureComponent;
         structure.autoView();
@@ -136,10 +137,10 @@ function StructureViewerPanel({
             onChange={(e) => updateRep(e.target.value as Representation)}
             className="text-xs border border-surface-border rounded px-1.5 py-0.5 bg-white"
           >
-            <option value="cartoon">Cartoon</option>
-            <option value="ball+stick">Ball+Stick</option>
-            <option value="surface">Surface</option>
-            <option value="spacefill">Spacefill</option>
+            <option value="cartoon">{t("viewer.repCartoon")}</option>
+            <option value="ball+stick">{t("viewer.repBallStick")}</option>
+            <option value="surface">{t("viewer.repSurface")}</option>
+            <option value="spacefill">{t("viewer.repSpacefill")}</option>
           </select>
           <button
             onClick={resetView}
@@ -319,7 +320,7 @@ function MetricsComparison({
               </td>
               {metrics.map((m) => (
                 <td key={m.id} className="py-2 text-center font-mono">
-                  {(m.mw / 1000).toFixed(1)} kDa
+                  {(m.mw / 1000).toFixed(1)} {t("designSession.compare.metrics.kda", { defaultValue: "kDa" })}
                 </td>
               ))}
             </tr>

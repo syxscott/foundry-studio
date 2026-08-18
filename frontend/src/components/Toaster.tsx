@@ -10,6 +10,7 @@ component can call `toast(...)` to surface a transient message.
 */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type ToastKind = "info" | "success" | "warning" | "error";
 interface Toast {
@@ -103,6 +104,7 @@ export const toast = {
 };
 
 export function Toaster() {
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   useEffect(() => toastBus.subscribe(setToasts), []);
 
@@ -136,24 +138,24 @@ export function Toaster() {
       className="fixed bottom-4 right-4 z-[60] flex flex-col-reverse gap-2 w-80 max-w-[calc(100vw-2rem)] pointer-events-none"
       aria-live="polite"
     >
-      {toasts.map((t) => {
-        const style = KIND_STYLES[t.kind];
+      {toasts.map((toast) => {
+        const style = KIND_STYLES[toast.kind];
         return (
           <div
-            key={t.id}
+            key={toast.id}
             className={`pointer-events-auto rounded-lg border shadow-md px-3 py-2.5 flex items-start gap-2 animate-toast-in ${style.box}`}
             role="status"
           >
             <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium leading-tight">{t.title}</p>
-              {t.body && <p className="text-xs mt-0.5 opacity-80 break-words">{t.body}</p>}
+              <p className="text-sm font-medium leading-tight">{toast.title}</p>
+              {toast.body && <p className="text-xs mt-0.5 opacity-80 break-words">{toast.body}</p>}
             </div>
             <button
               type="button"
-              onClick={() => toastBus.dismiss(t.id)}
+              onClick={() => toastBus.dismiss(toast.id)}
               className="text-xs opacity-60 hover:opacity-100 shrink-0"
-              aria-label="Dismiss"
+              aria-label={t("common.dismiss", { defaultValue: "Dismiss" })}
             >
               ✕
             </button>

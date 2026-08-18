@@ -68,6 +68,11 @@ export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (isDark) document.documentElement.classList.add("dark");
+  }, []);
+
+  useEffect(() => {
     const onHash = () => setRoute(parseHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);

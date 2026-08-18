@@ -48,6 +48,13 @@ export const ru: TranslationKey = {
     llmOff: "Внешний LLM не подключён (эвристический разбор)",
     llmOk: "Подключено: {{name}}",
     llmNoKey: "{{name}}: ключ API не задан",
+    planLlmmNote: "План, сгенерированный ИИ — проверьте параметры перед отправкой",
+    example: {
+      1: "Спроектировать RFD3binder на 80 остатков, горячие точки A12/B34, 5 вариантов",
+      2: "Predict the structure of this protein with RF3",
+      3: "ProteinMPNN для 1abc.pdb, дизайн последовательности, температура 0.2",
+      4: "RFD3na сгенерировать 3 белка, связывающих нуклеиновую кислоту",
+    },
   },
   models: {
     rfd3: {
@@ -394,6 +401,7 @@ export const ru: TranslationKey = {
       keySet: "Установлен",
       keyMissing: "Не задан",
       keyRequired: "Для работы AI-функций требуется API Key",
+      modelRequired: "Для этого пресета требуется указать название модели",
       notConfigured: "Отключён",
       apiKey: "API Key",
       apiKeyHelp: "Хранится только в localStorage браузера. Не загружается на сервер.",
@@ -478,6 +486,10 @@ export const ru: TranslationKey = {
     next: "Далее",
     submit: "Отправить",
     serverUnreachable: "Нет связи с бэкендом. Убедитесь, что foundry-studio запущен.",
+    elapsed: "прошло",
+    eta: "ОСТ",
+    kda: "kDa",
+    dismiss: "Закрыть",
   },
   health: {
     gpu: "GPU",
@@ -545,6 +557,8 @@ export const ru: TranslationKey = {
       resolvedBy: "Разрешено {{resolver}}",
       jobStatus: "Статус задания",
       candidates: "{{count}} кандидат(ов)",
+      live: "онлайн",
+      streaming: "Стриминг…",
     },
     candidates: {
       title: "Кандидаты",
@@ -576,6 +590,7 @@ export const ru: TranslationKey = {
         length: "Длина",
         mw: "Мол. вес",
         pI: "Изоэлектрическая точка",
+        kda: "кДа",
       },
       sequenceAlignment: "Выравнивание последовательностей",
       truncated: "+{{count}} ещё",

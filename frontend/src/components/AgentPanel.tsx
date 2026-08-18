@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, ApiClientError } from "../api";
@@ -45,13 +45,6 @@ function renderThinking(text: string): ReactNode {
   );
 }
 
-const EXAMPLES = [
-  "用 RFD3 设计一个 80 残基的 binder，针对 hotspot A12/B34，采样 5 个",
-  "Predict the structure of this protein with RF3",
-  "用 ProteinMPNN 对 1abc.pdb 做序列设计，温度 0.2",
-  "用 RFD3na 生成 3 个核酸结合蛋白",
-];
-
 function Row({ k, v }: { k: string; v: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5 border-b border-surface-border last:border-0">
@@ -63,6 +56,7 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
 
 export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: string) => void }) {
   const { t, i18n } = useTranslation();
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [thinking, setThinking] = useState("");
@@ -72,6 +66,13 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [errorArgs, setErrorArgs] = useState<Record<string, unknown> | null>(null);
   const [providers, setProviders] = useState<LlmProviderStatus[] | null>(null);
+
+  const EXAMPLES = [
+    t("agent.example.1"),
+    t("agent.example.2"),
+    t("agent.example.3"),
+    t("agent.example.4"),
+  ];
 
   // Surface which third-party LLM provider is wired up (or that we're heuristic-only).
   useEffect(() => {
@@ -86,6 +87,13 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
       });
     return () => {
       active = false;
+    };
+  }, []);
+
+  // Cancel any in-flight SSE stream when the component unmounts.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
     };
   }, []);
 
@@ -106,6 +114,8 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
 
   const parse = () => {
     if (!text.trim() || streaming) return;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setStreaming(true);
     setThinking("");
     setError(null);
@@ -113,6 +123,7 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
     setErrorArgs(null);
     setPlan(null);
     api.streamAgentChat(text.trim(), i18n.language, {
+      signal: controller.signal,
       onToken: (chunk) => setThinking((prev) => prev + chunk),
       onPlan: (p) => {
         setPlan(p);
@@ -132,6 +143,7 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
   // that it doesn't require the user to scroll back to the textarea — the
   // error block surfaces a "Retry" button.
   const retry = () => {
+    abortControllerRef.current?.abort();
     void parse();
   };
 
@@ -272,7 +284,7 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
             {streaming && (
               <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-brand-500 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-soft-pulse" />
-                live
+                {t("designSession.round.live", { defaultValue: "live" })}
               </span>
             )}
           </div>
@@ -333,6 +345,12 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
             <div className="mt-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
               <span className="font-medium">{t("agent.plan.missing")}:</span> {plan.missing_inputs.join("；")}
             </div>
+          )}
+
+          {plan.resolved_by === "llm" && (
+            <p className="text-xs text-slate-500 mt-2">
+              {t("agent.planLlmmNote")}
+            </p>
           )}
 
           <button

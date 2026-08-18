@@ -72,7 +72,7 @@ function calculateMetrics(sequence: string): {
   const mw = (totalWeight - 18 * (length - 1)).toFixed(0);
 
   // Simplified pI estimation (very basic)
-  const pI = (7.0).toFixed(1);
+  const pI = "—"; // TODO: calculate from sequence composition
 
   return {
     length,

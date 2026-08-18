@@ -820,6 +820,11 @@ export function SettingsPage() {
             <span className="text-sm text-green-600 font-medium">{t("settings.llm.saved")}</span>
           )}
         </div>
+        {cfg.model.trim().length === 0 && (
+          <p className="text-xs text-amber-600 mt-1">
+            {t("settings.llm.modelRequired")}
+          </p>
+        )}
       </div>
 
       {/* Backend defaults */}
