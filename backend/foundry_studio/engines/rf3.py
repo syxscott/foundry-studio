@@ -31,6 +31,14 @@ class RF3Engine(BaseEngine):
             int(self._params.get("num_steps", 50)),
         )
         if self._initialized_key is not None and self._initialized_key != key:
+            # Properly release GPU resources before re-initialization
+            if self._engine is not None:
+                if hasattr(self._engine, "cleanup"):
+                    self._engine.cleanup()
+                elif hasattr(self._engine, "release"):
+                    self._engine.release()
+                elif hasattr(self._engine, "close"):
+                    self._engine.close()
             self._engine = None  # type: ignore[assignment]
             self.initialized = False
             self._initialized_key = None

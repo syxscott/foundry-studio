@@ -271,11 +271,12 @@ def cleanup_checkpoints(extra_dirs: str = "", dry_run: bool = False) -> dict[str
         if path is None or not path.is_file():
             continue
         info = path.stat()
-        total_bytes += info.st_size
         if dry_run:
             deleted.append({"path": str(path), "size_bytes": info.st_size})
+            total_bytes += info.st_size
         else:
             path.unlink(missing_ok=True)
+            total_bytes += info.st_size
             deleted.append({"path": str(path), "size_bytes": info.st_size})
     return {
         "deleted": deleted,

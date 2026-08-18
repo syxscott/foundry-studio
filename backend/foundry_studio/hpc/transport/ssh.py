@@ -42,18 +42,20 @@ class SshTransport(Transport):
         return f"{self.user}@{self.host}" if self.user else self.host
 
     def _ssh_base(self) -> list[str]:
-        base = ["ssh", "-p", str(self.port), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
+        # SECURITY: use StrictHostKeyChecking=yes to prevent MITM attacks
+        base = ["ssh", "-p", str(self.port), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes"]
         if self.key_path:
             base += ["-i", self.key_path]
         return base
 
     def _scp_base(self) -> list[str]:
-        base = ["scp", "-P", str(self.port), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
+        # SECURITY: use StrictHostKeyChecking=yes to prevent MITM attacks
+        base = ["scp", "-P", str(self.port), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes"]
         if self.key_path:
             base += ["-i", self.key_path]
         return base
 
-    def run(self, cmd: str, cwd: str | None = None) -> tuple[int, str, str]:
+    def run(self, cmd: str, cwd: str | None = None, timeout: int = 30) -> tuple[int, str, str]:
         if cwd is not None:
             # Always shell-quote when cwd is provided to prevent injection
             remote_cmd = f"cd {shlex.quote(cwd)} && {shlex.quote(cmd)}"
@@ -65,6 +67,7 @@ class SshTransport(Transport):
             self._ssh_base() + [self._target(), remote_cmd],
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
         return proc.returncode, proc.stdout, proc.stderr
 
@@ -94,9 +97,11 @@ class SshTransport(Transport):
                 raise ValueError(f"Invalid pattern: {pat!r}")
             # Restrict to safe filename characters
             safe_pat = re.sub(r"[^a-zA-Z0-9.*_\-]", "_", pat)
+            # Quote the remote path properly using shlex.quote
+            quoted_remote = shlex.quote(f"{remote}/{safe_pat}")
             proc = subprocess.run(
                 self._scp_base()
-                + [f"{self._target()}:{remote}/{safe_pat}", str(local_dir) + "/"],
+                + [f"{self._target()}:{quoted_remote}", str(local_dir) + "/"],
                 capture_output=True,
                 text=True,
             )
@@ -104,6 +109,9 @@ class SshTransport(Transport):
                 for p in local_dir.rglob("*"):
                     if p.is_file():
                         fetched.append(p)
+            else:
+                # Propagate SCP errors instead of silently ignoring
+                raise RuntimeError(f"SCP copy_back failed: {proc.stderr}")
         return fetched
 
     def read_text(self, remote: str) -> str:

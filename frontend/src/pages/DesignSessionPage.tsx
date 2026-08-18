@@ -201,7 +201,7 @@ function CandidatesPanel({
   filter: CandidateFilter;
   onFilterChange: (filter: CandidateFilter) => void;
   selectedIds: string[];
-  onCompare: () => void;
+  onCompare: (candidateId?: string) => void;
   onOpen3D: (candidate: DesignCandidate) => void;
   compareMode: boolean;
   jobStatuses: Map<string, JobStatus>;
@@ -267,7 +267,7 @@ function CandidatesPanel({
       {/* Compare button */}
       <div className="px-3 py-2 border-b border-surface-border flex justify-end">
         <button
-          onClick={onCompare}
+          onClick={() => onCompare()}
           disabled={selectedIds.length === 0}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
             compareMode
@@ -317,10 +317,11 @@ function CandidatesPanel({
                 onOpen3D={() => onOpen3D(candidate)}
                 onCompare={() => {
                   if (selectedIds.includes(candidate.id)) {
-                    // Deselect
-                    onCompare(); // This will be handled by parent
+                    // Deselect - pass candidateId to remove from selection
+                    onCompare(candidate.id);
                   } else if (selectedIds.length < 3) {
-                    onCompare(); // This will be handled by parent
+                    // Select - pass candidateId to add to selection
+                    onCompare(candidate.id);
                   }
                 }}
                 onContinue={() => onContinue(candidate)}
@@ -569,7 +570,7 @@ function DesignSessionPageContent({ sessionId }: DesignSessionPageProps) {
       if (!session) return;
 
       const message = `${t("designSession.continuePrompt")}: ${candidate.name} (${candidate.sequence.slice(0, 50)}...)`;
-      // handleSendMessage calls addRound internally — no need to call it here too.
+      // Use void to explicitly mark this as intentionally unhandled promise
       void handleSendMessage(message);
     },
     [session, handleSendMessage, t],
@@ -607,21 +608,16 @@ function DesignSessionPageContent({ sessionId }: DesignSessionPageProps) {
     }
   }, []);
 
-  /** Handle opening comparison */
-  const handleOpenComparison = useCallback(() => {
-    if (!session) return;
-
-    const allCandidates = session.rounds.flatMap((r) => r.candidates);
-    const selected = allCandidates.filter((c) => selectedIds.includes(c.id));
-    setComparisonCandidates(selected);
-  }, [session, selectedIds]);
-
   // Open comparison when 2+ candidates selected
   useEffect(() => {
     if (compareMode && selectedIds.length >= 2) {
-      handleOpenComparison();
+      // Inline the comparison opening logic to avoid dependency issues
+      if (!session) return;
+      const allCandidates = session.rounds.flatMap((r) => r.candidates);
+      const selected = allCandidates.filter((c) => selectedIds.includes(c.id));
+      setComparisonCandidates(selected);
     }
-  }, [compareMode, selectedIds.length]);
+  }, [compareMode, selectedIds.length, session]);
 
   if (!session) {
     return (

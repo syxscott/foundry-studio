@@ -43,7 +43,7 @@ def health(
         foundry_available=foundry_ok,
         data_dir=str(settings.resolved_data_dir()),
         backend=info,
-        workers=[info],
+        workers=[],  # Worker info not yet implemented; placeholder for future
         llm={"providers": build_registry(settings).summaries()},
         message=None,
     )
@@ -122,7 +122,7 @@ def install_checkpoint(
     return CheckpointInfo(
         name=result["name"],
         filename=Path(result["path"]).name,
-        description=_description_for(result["name"]),
+        description=_description_for(result["name"], settings.checkpoint_dirs),
         installed=True,
         path=result["path"],
         size_bytes=result["size_bytes"],
@@ -185,14 +185,16 @@ def _gpu_available() -> bool:
         return False
 
 
-def _description_for(name: str) -> str:
-    for entry in ckpt.list_checkpoints():
+def _description_for(name: str, checkpoint_dirs: str = "") -> str:
+    # Use the public list_checkpoints with settings checkpoint_dirs
+    for entry in ckpt.list_checkpoints(checkpoint_dirs):
         if entry["name"] == name:
             return entry["description"]
     return name
 
 
 def _url_for(name: str) -> str | None:
-    registry = ckpt._merged_registry()  # noqa: SLF001
+    # Access through the public registry interface
+    registry = ckpt._merged_registry()
     info = registry.get(name)
     return info.get("url") if info else None

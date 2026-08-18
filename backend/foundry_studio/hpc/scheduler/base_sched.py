@@ -140,9 +140,17 @@ class SchedulerBackend(Backend):
             lines.append("source \"$(conda info --base)/etc/profile.d/conda.sh\"")
             lines.append(f"conda activate {self._safe(env)}")
             lines.append(base)
-        else:
+        elif kind == "script":
             # script: user supplies a full command template.
-            lines.append(inv.get("command", base))
+            # SECURITY: only allow whitelisted commands to prevent injection
+            user_cmd = inv.get("command", "")
+            allowed_patterns = ("foundry_studio", "python", "conda", "module")
+            if not any(user_cmd.startswith(p) for p in allowed_patterns):
+                raise ValueError(
+                    f"script invocation kind only allows commands starting with "
+                    f"{allowed_patterns}, got: {user_cmd!r}"
+                )
+            lines.append(user_cmd)
         return lines
 
     def _build_script(self, spec: JobSpec, remote_wd: str) -> str:
@@ -178,15 +186,15 @@ class SchedulerBackend(Backend):
             encoding="utf-8",
         )
 
-        self.transport.copy_to(script_path, f"{shlex.quote(remote_wd)}/run.sh")
-        self.transport.copy_to(local_job_dir / "params.json", f"{shlex.quote(remote_wd)}/params.json")
+        self.transport.copy_to(script_path, f"{remote_wd}/run.sh")
+        self.transport.copy_to(local_job_dir / "params.json", f"{remote_wd}/params.json")
         for f in spec.input_files:
             local_file = local_job_dir / f.get("filename", "")
             if local_file.is_file():
-                safe_remote = f"{shlex.quote(remote_wd)}/{sanitize_shell_arg(f.get('filename', ''))}"
+                safe_remote = f"{remote_wd}/{sanitize_shell_arg(f.get('filename', ''))}"
                 self.transport.copy_to(local_file, safe_remote)
 
-        rc, out, err = self.transport.run(f"{self.submit_cmd} {shlex.quote(remote_wd)}/run.sh")
+        rc, out, err = self.transport.run(f"{self.submit_cmd} {remote_wd}/run.sh")
         if rc != 0:
             raise RuntimeError(f"{self.scheduler} submit failed: {err or out}")
         remote_id = self._parse_id(out)
@@ -207,7 +215,9 @@ class SchedulerBackend(Backend):
         remote_id = str(handle.remote_id)
         if not remote_id.isdigit():
             raise ValueError(f"Invalid remote_id: {remote_id!r}")
-        self.transport.run(self.cancel_cmd.format(id=remote_id))
+        rc, out, err = self.transport.run(self.cancel_cmd.format(id=remote_id))
+        if rc != 0:
+            raise RuntimeError(f"{self.scheduler} cancel failed: {err or out}")
 
     def fetch_outputs(self, handle: RemoteHandle, dest_dir: Path) -> list[Path]:
         dest_dir = Path(dest_dir)

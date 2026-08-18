@@ -9,8 +9,12 @@ directory ``data/jobs/{job_id}/`` and referenced in the job's
 from __future__ import annotations
 
 import json
+import os
 import re
+import time
 from pathlib import Path
+from threading import Thread
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import FileResponse
@@ -221,11 +225,26 @@ def download_job_zip(
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for p in files:
             zf.write(p, arcname=p.relative_to(out_root).as_posix())
+
+    # Schedule cleanup in a background thread after a delay (gives time for download to complete)
+    t = Thread(target=_cleanup_zip_delayed, args=(zip_path, 300), daemon=True)
+    t.start()
+
     return FileResponse(
         zip_path,
         media_type="application/zip",
         filename=f"{job_id}_outputs.zip",
     )
+
+
+def _cleanup_zip_delayed(zip_path: Path, delay: float = 300.0) -> None:
+    """Delete the temporary zip file after a delay."""
+    time.sleep(delay)
+    if zip_path.exists():
+        try:
+            os.unlink(zip_path)
+        except OSError:
+            pass
 
 
 def _media_type(name: str) -> str:

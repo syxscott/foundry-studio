@@ -33,7 +33,7 @@ interface CandidateCardProps {
   /** Callback when "Open 3D" is clicked */
   onOpen3D?: () => void;
   /** Callback when "Compare" is clicked (toggle selection) */
-  onCompare?: () => void;
+  onCompare?: (candidateId?: string) => void;
   /** Callback when "Continue" is clicked (send to AI for next round) */
   onContinue?: () => void;
   /** Whether compare mode is enabled */
@@ -116,7 +116,7 @@ export function CandidateCard({
       {compareMode && (
         <div className="absolute top-2 left-2">
           <button
-            onClick={onCompare}
+            onClick={() => onCompare?.(candidate.id)}
             className={`w-5 h-5 rounded border-2 transition-colors flex items-center justify-center ${
               isSelected
                 ? "bg-brand-600 border-brand-600 text-white"
@@ -299,7 +299,7 @@ export function CandidateCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onCompare();
+                onCompare(candidate.id);
               }}
               className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
                 isSelected

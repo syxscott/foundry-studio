@@ -196,10 +196,49 @@ def _simulate_beta_strand(n_res: int, seq: str, start_idx: int = 1,
         resnum = start_idx + i
 
         # Extended chain: roughly along x-axis with slight wave
-        x = i * _CA_CA_BOND * 0.87  # ~cos(60°) for extended
+        # Beta-strand rise per residue is approximately 3.4-3.5Å in the extended direction
+        x = i * 3.4  # approximate extended beta-strand rise per residue
         y = 0.5 * math.sin(i * 0.8)  # slight pleating
-        z = i * 0.15  # slight rise
+        z = i * 0.2  # slight rise for beta-pleating
         ca = [center[0] + x, center[1] + y, center[2] + z]
+
+        sc_offset = _SIDECHAINS[letter]
+        cb_coord = None
+        if letter != "G":
+            cb = [ca[0] + sc_offset[1], ca[1] + sc_offset[2], ca[2] + sc_offset[3]]
+            cb_coord = cb
+
+        atoms.append((resnum, letter, resname, ca, cb_coord))
+
+    return atoms
+
+
+def _simulate_helix_310(n_res: int, seq: str, start_idx: int = 1,
+                         center=(0.0, 0.0, 0.0)) -> list[tuple[int, str, str, list[float], list[float]]]:
+    """Generate coordinates for a 3_10-helix of n_res residues.
+
+    3_10 helices have distinct geometry: phi ≈ -49°, psi ≈ -26°, 3 residues per turn.
+    Returns list of (resnum, one-letter, 3-letter, ca_coord, cb_coord_or_None).
+    """
+    atoms = []
+    phi = _HELIX310_PHI
+    psi = _HELIX310_PSI
+    twist = 2 * math.pi / _HELIX310_TWIST  # 3 residues per turn
+
+    rng = random.Random(42 + start_idx + 999)  # Different seed from alpha helix
+
+    for i in range(n_res):
+        letter = seq[i] if i < len(seq) else rng.choice(_ALPHABET)
+        resname = _SIDECHAINS[letter][0]
+        resnum = start_idx + i
+
+        # Simplified helical geometry using phi/psi torsion angles
+        angle = i * twist
+        radius = 2.3  # 3_10 helix has smaller radius than alpha helix
+        x = center[0] + radius * math.cos(angle) + i * 2.0  # slight axial rise
+        y = center[1] + radius * math.sin(angle)
+        z = center[2] + i * 2.0
+        ca = [x, y, z]
 
         sc_offset = _SIDECHAINS[letter]
         cb_coord = None
@@ -291,8 +330,8 @@ def _simulate_protein(n_res: int, model: str, seed: int) -> list[tuple[int, str,
             seg_atoms = _simulate_beta_strand(length, seq=seq[resnum - 1:resnum - 1 + length],
                                                start_idx=resnum, center=center)
         elif sstype == "310":
-            # 3_10 helix: tighter, shorter
-            seg_atoms = _simulate_alpha_helix(length, seq=seq[resnum - 1:resnum - 1 + length],
+            # 3_10 helix: tighter, shorter - use correct 3_10 geometry (phi=-49°, psi=-26°)
+            seg_atoms = _simulate_helix_310(length, seq=seq[resnum - 1:resnum - 1 + length],
                                               start_idx=resnum, center=center)
         else:
             # Loop: simple extended with noise

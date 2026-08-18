@@ -25,10 +25,14 @@ class SharedFsTransport(Transport):
         self.workdir = Path(remote_workdir)
 
     def run(self, cmd: str, cwd: str | None = None) -> tuple[int, str, str]:
+        # Split cmd into list for shell=False; use shlex for safe splitting
+        import shlex
+        cmd_list = shlex.split(cmd) if isinstance(cmd, str) else cmd
+        workdir = str(self.workdir if cwd is None else Path(cwd))
         proc = subprocess.run(
-            cmd,
-            shell=True,
-            cwd=str(self.workdir if cwd is None else Path(cwd)),
+            cmd_list,
+            shell=False,
+            cwd=workdir,
             capture_output=True,
             text=True,
         )

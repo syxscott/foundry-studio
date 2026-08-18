@@ -216,7 +216,10 @@ class Planner:
         if start == -1 or end == -1 or end <= start:
             raise ValueError("LLM did not return a JSON plan")
         blob = raw[start : end + 1]
-        data = json.loads(blob)
+        try:
+            data = json.loads(blob)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"LLM returned malformed JSON: {exc}")
         model = data.get("model")
         if model is None or model_catalog.get_model(model) is None:
             raise ValueError(f"LLM returned unknown model '{model}'")
@@ -317,7 +320,7 @@ class Planner:
             params["symmetry"] = m.group(1)
 
         # Hotspots.
-        m = re.search(r"hotspots?\D*?([a-z0-9,\s]+)", lowered)
+        m = re.search(r"hotspots?\D*?([a-z0-9,\s]+)", text.lower())
         if m:
             params["hotspots"] = m.group(1).strip()
 

@@ -17,9 +17,12 @@ class LocalTransport(Transport):
     name = "local"
 
     def run(self, cmd: str, cwd: str | None = None) -> tuple[int, str, str]:
+        # Split cmd into list for shell=False to prevent command injection
+        import shlex
+        cmd_list = shlex.split(cmd) if isinstance(cmd, str) else cmd
         proc = subprocess.run(
-            cmd,
-            shell=True,
+            cmd_list,
+            shell=False,
             cwd=cwd,
             capture_output=True,
             text=True,

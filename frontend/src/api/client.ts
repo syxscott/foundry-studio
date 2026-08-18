@@ -167,6 +167,7 @@ export const api = {
     },
   ): void => {
     const cfg = api.llmConfig.get();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     fetch(`${BASE}/agent/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -203,11 +204,11 @@ export const api = {
           handlers.onError?.("No response stream");
           return;
         }
-        const reader = res.body.getReader();
+        reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buf = "";
         const pump = (): Promise<void> =>
-          reader.read().then(({ done, value }) => {
+          reader!.read().then(({ done, value }) => {
             if (done) {
               handlers.onDone?.();
               return;
@@ -222,7 +223,7 @@ export const api = {
               if (ev.event === "token" && ev.data && typeof ev.data.text === "string")
                 handlers.onToken?.(ev.data.text);
               else if (ev.event === "plan" && ev.data) handlers.onPlan?.(ev.data as AgentPlan);
-              else if (ev.event === "error")
+              else if (ev.event === "error") {
                 handlers.onError?.(
                   (ev.data && (ev.data.message as string)) || "error",
                   ev.data && (ev.data.i18nErrorKey || ev.data.message_key)
@@ -235,13 +236,19 @@ export const api = {
                       }
                     : undefined,
                 );
+              }
             }
             return pump();
           });
         return pump();
       })
       .catch((e: unknown) => {
-        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (e instanceof DOMException && e.name === "AbortError") {
+          if (reader) {
+            reader.cancel().catch(() => {});
+          }
+          return;
+        }
         handlers.onError?.(String(e));
       });
   },

@@ -370,8 +370,13 @@ async def job_logs_stream(
                             yield f"data: {json.dumps({'logs': chunk}, ensure_ascii=False)}\n\n"
                     yield f"data: {json.dumps({'status': current['status']}, ensure_ascii=False)}\n\n"
                     break
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                # Log the exception and yield an error event before breaking
+                import logging
+                logger = logging.getLogger("foundry_studio.api")
+                logger.exception("event stream error for job %s: %s", job_id, exc)
+                yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+                break
             await asyncio.sleep(1.0)
 
     return StreamingResponse(

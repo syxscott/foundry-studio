@@ -53,10 +53,13 @@ class RestTransport(Transport):
         return code, out, err
 
     def copy_to(self, local: Path, remote: str) -> None:
+        # Validate remote path to prevent path traversal
+        if ".." in remote or remote.startswith("/"):
+            raise ValueError(f"Invalid remote path: {remote!r}")
         with open(local, "rb") as fh:
             body = fh.read()
         req = urllib.request.Request(
-            f"{self.gateway_url}/upload?path={urllib.parse.quote(remote)}",
+            f"{self.gateway_url}/upload?path={urllib.parse.quote(remote, safe='/')}",
             data=body,
             headers={
                 **({"Authorization": f"Bearer {self.token}"} if self.token else {}),
@@ -70,6 +73,9 @@ class RestTransport(Transport):
         local_dir.mkdir(parents=True, exist_ok=True)
         fetched: list[Path] = []
         for pat in patterns:
+            # Validate pattern to prevent path traversal
+            if ".." in pat or pat.startswith("/"):
+                raise ValueError(f"Invalid pattern: {pat!r}")
             code, out, _ = self._post("/download", {"path": remote, "pattern": pat})
             if code == 200 and out:
                 target = local_dir / Path(pat).name

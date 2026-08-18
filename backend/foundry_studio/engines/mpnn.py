@@ -38,6 +38,14 @@ class MPNNEngine(BaseEngine):
             self._initialized_model_type is not None
             and self._initialized_model_type != model_type
         ):
+            # Properly release GPU resources before re-initialization
+            if self._engine is not None:
+                if hasattr(self._engine, "cleanup"):
+                    self._engine.cleanup()
+                elif hasattr(self._engine, "release"):
+                    self._engine.release()
+                elif hasattr(self._engine, "close"):
+                    self._engine.close()
             self._engine = None  # type: ignore[assignment]
             self.initialized = False
             self._initialized_model_type = None
@@ -100,7 +108,22 @@ class MPNNEngine(BaseEngine):
 
         input_dicts: list[dict[str, Any]] = []
         for f in structures:
-            path = job_dir / f["filename"]
+            filename = f["filename"]
+            # SECURITY: validate filename to prevent path traversal
+            if ".." in filename or filename.startswith("/"):
+                import logging
+                logger = logging.getLogger("foundry_studio.engines")
+                logger.warning("Skipping file with path traversal attempt: %s", filename)
+                continue
+            path = job_dir / filename
+            # Additional check: ensure resolved path stays within job_dir
+            try:
+                resolved = path.resolve().relative_to(job_dir.resolve())
+            except ValueError:
+                import logging
+                logger = logging.getLogger("foundry_studio.engines")
+                logger.warning("Path %s escapes job directory, skipping", path)
+                continue
             if not path.is_file():
                 continue
             entry: dict[str, Any] = {

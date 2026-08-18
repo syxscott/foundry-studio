@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
@@ -17,6 +18,19 @@ from foundry_studio.db import StudioDB
 from foundry_studio.joblifecycle import JobOrchestrator
 
 logger = logging.getLogger("foundry_studio.api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle: start JobOrchestrator on startup, stop on shutdown."""
+    # Startup: manager is already started in create_app()
+    yield
+    # Shutdown: gracefully stop the JobOrchestrator
+    manager = getattr(app.state, "manager", None)
+    if manager is not None:
+        logger.info("Shutting down JobOrchestrator...")
+        manager.stop()
+        logger.info("JobOrchestrator stopped.")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -34,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title="foundry-studio",
         description="Agent-first control surface for RosettaCommons Foundry protein design on HPC",
         version=__version__,
+        lifespan=lifespan,
     )
     app.state.settings = settings
     app.state.db = db
