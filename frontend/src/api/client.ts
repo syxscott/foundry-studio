@@ -1,5 +1,7 @@
 /** Typed fetch client for the foundry-studio API. */
 
+import { EventSourceParserStream } from "eventsource-parser/stream";
+
 import type {
   AgentCapabilities,
   AgentPlan,
@@ -151,6 +153,9 @@ export const api = {
    * Errors carry an `i18nErrorKey` + `errorArgs` payload (when the server
    * provides one) so the UI can render the localized string from its own
    * catalog without parsing the human-readable `message`.
+   *
+   * Retry policy: up to 2 retries with exponential backoff + jitter for transient
+   * server errors (5xx). AbortError is handled gracefully (no retry).
    */
   streamAgentChat: (
     message: string,
@@ -167,90 +172,128 @@ export const api = {
     },
   ): void => {
     const cfg = api.llmConfig.get();
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-    fetch(`${BASE}/agent/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        lang,
-        api_key: cfg.apiKey || undefined,
-        base_url: cfg.baseUrl || undefined,
-        model: cfg.model || undefined,
-        api_format: cfg.apiFormat || undefined,
-      }),
-      signal: handlers.signal,
-    })
-      .then((res) => {
-        if (!res.ok) {
-          res
-            .json()
-            .then((body) =>
-              handlers.onError?.(
-                (body && (body.message || body.message_key)) ||
-                  `HTTP ${res.status}`,
-                body && (body.i18nErrorKey || body.message_key)
-                  ? {
-                      i18nErrorKey: body.i18nErrorKey || body.message_key,
-                      errorArgs: body.errorArgs || body.params,
-                    }
-                  : undefined,
-              ),
-            )
-            .catch(() => handlers.onError?.(`HTTP ${res.status}`));
-          return;
+
+    const doFetch = (retries: number): void => {
+      let readerRef: ReadableStreamDefaultReader<Uint8Array> | null = null;
+      let aborted = false;
+
+      const cleanup = () => {
+        if (readerRef) {
+          readerRef.cancel().catch(() => {});
+          readerRef = null;
         }
-        if (!res.body) {
-          handlers.onError?.("No response stream");
-          return;
-        }
-        reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        const pump = (): Promise<void> =>
-          reader!.read().then(({ done, value }) => {
-            if (done) {
-              handlers.onDone?.();
+      };
+
+      // Wrap signal so we can detect abort without killing the outer fetch
+      const innerController = new AbortController();
+      const fusedSignal = handlers.signal
+        ? (() => {
+            const c = new AbortController();
+            handlers.signal!.addEventListener("abort", () => {
+              aborted = true;
+              c.abort();
+              cleanup();
+            });
+            return c.signal;
+          })()
+        : innerController.signal;
+
+      fetch(`${BASE}/agent/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          lang,
+          api_key: cfg.apiKey || undefined,
+          base_url: cfg.baseUrl || undefined,
+          model: cfg.model || undefined,
+          api_format: cfg.apiFormat || undefined,
+        }),
+        signal: fusedSignal,
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            // 5xx: retry with backoff; 4xx: never retry
+            if (res.status >= 500 && retries > 0) {
+              const delay = _retryDelay(retries);
+              await _sleep(delay);
+              doFetch(retries - 1);
               return;
             }
-            buf += decoder.decode(value, { stream: true });
-            let idx: number;
-            while ((idx = buf.indexOf("\n\n")) >= 0) {
-              const frame = buf.slice(0, idx);
-              buf = buf.slice(idx + 2);
-              const ev = parseSSEFrame(frame);
-              if (!ev) continue;
-              if (ev.event === "token" && ev.data && typeof ev.data.text === "string")
-                handlers.onToken?.(ev.data.text);
-              else if (ev.event === "plan" && ev.data) handlers.onPlan?.(ev.data as AgentPlan);
-              else if (ev.event === "error") {
-                handlers.onError?.(
-                  (ev.data && (ev.data.message as string)) || "error",
-                  ev.data && (ev.data.i18nErrorKey || ev.data.message_key)
-                    ? {
-                        i18nErrorKey:
-                          (ev.data.i18nErrorKey as string) ||
-                          (ev.data.message_key as string),
-                        errorArgs: (ev.data.errorArgs as Record<string, unknown>) ||
-                          (ev.data.params as Record<string, unknown>),
-                      }
-                    : undefined,
-                );
+            let errKey: string | undefined;
+            let errArgs: Record<string, unknown> | undefined;
+            let errMsg = `HTTP ${res.status}`;
+            try {
+              const body = await res.json();
+              errMsg = body.message || body.message_key || errMsg;
+              if (body.i18nErrorKey || body.message_key) {
+                errKey = body.i18nErrorKey || body.message_key;
+                errArgs = body.errorArgs || body.params;
               }
+            } catch {
+              // use HTTP status as message
             }
-            return pump();
-          });
-        return pump();
-      })
-      .catch((e: unknown) => {
-        if (e instanceof DOMException && e.name === "AbortError") {
-          if (reader) {
-            reader.cancel().catch(() => {});
+            handlers.onError?.(errMsg, errKey ? { i18nErrorKey: errKey, errorArgs: errArgs } : undefined);
+            return;
           }
-          return;
-        }
-        handlers.onError?.(String(e));
-      });
+
+          if (!res.body) {
+            handlers.onError?.("No response stream");
+            return;
+          }
+
+          readerRef = res.body.getReader();
+
+          // Use eventsource-parser for robust SSE framing:
+          // - Handles UTF-8 continuation bytes correctly
+          // - Handles CRLF, comment lines, chunk reassembly
+          // - Dispatches on blank-line boundary
+          const stream = res.body
+            .pipeThrough(new TextDecoderStream())
+            .pipeThrough(new EventSourceParserStream());
+
+          const reader = stream.getReader();
+          readerRef = null; // ownership transferred to eventsource-parser
+
+          try {
+            while (true) {
+              if (aborted) break;
+              const { done, value } = await reader.read();
+              if (done || aborted) break;
+              _handleSSEEvent(value as { event?: string; data?: string }, handlers);
+            }
+          } catch (e) {
+            if (aborted) return;
+            // If stream errors (e.g. truncated), retry if we have attempts left
+            if (retries > 0) {
+              const delay = _retryDelay(retries);
+              await _sleep(delay);
+              doFetch(retries - 1);
+              return;
+            }
+            handlers.onError?.(String(e));
+            return;
+          }
+
+          handlers.onDone?.();
+        })
+        .catch((e: unknown) => {
+          if (e instanceof DOMException && e.name === "AbortError") {
+            cleanup();
+            return;
+          }
+          // Network / fetch failures: retry if attempts remain
+          if (retries > 0) {
+            _sleep(_retryDelay(retries)).then(() => {
+              if (!aborted) doFetch(retries - 1);
+            });
+            return;
+          }
+          handlers.onError?.(String(e));
+        });
+    };
+
+    doFetch(2); // 2 retries
   },
 
   agentRun: (payload: AgentRunPayload) =>
@@ -260,32 +303,54 @@ export const api = {
     }),
 };
 
-/** Parse one SSE frame (`event:` / `data:` lines) into {event, data}. */
-function parseSSEFrame(
-  frame: string,
-): {
-  event: string;
-  data:
-    | {
-        text?: string;
-        message?: string;
-        i18nErrorKey?: string;
-        message_key?: string;
-        errorArgs?: Record<string, unknown>;
-        params?: Record<string, unknown>;
-      }
-    | null;
-} | null {
-  let event = "message";
-  const dataLines: string[] = [];
-  for (const line of frame.split("\n")) {
-    if (line.startsWith("event:")) event = line.slice(6).trim();
-    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
-  }
-  if (dataLines.length === 0) return null;
+/** Handle one parsed SSE event from eventsource-parser. */
+function _handleSSEEvent(
+  ev: { event?: string; data?: string },
+  handlers: {
+    onToken?: (text: string) => void;
+    onPlan?: (plan: AgentPlan) => void;
+    onError?: (
+      message: string,
+      meta?: { i18nErrorKey?: string; errorArgs?: Record<string, unknown> },
+    ) => void;
+  },
+): void {
+  const event = ev.event || "message";
+  let data: unknown;
   try {
-    return { event, data: JSON.parse(dataLines.join("")) };
+    data = ev.data ? JSON.parse(ev.data) : null;
   } catch {
-    return { event, data: null };
+    data = null;
+  }
+
+  if (event === "token" && data && typeof (data as { text?: string }).text === "string") {
+    handlers.onToken?.((data as { text: string }).text);
+  } else if (event === "plan" && data) {
+    handlers.onPlan?.(data as AgentPlan);
+  } else if (event === "error") {
+    const d = data as { message?: string; i18nErrorKey?: string; message_key?: string; errorArgs?: Record<string, unknown>; params?: Record<string, unknown> } | null;
+    handlers.onError?.(
+      (d?.message as string) || "error",
+      d && (d.i18nErrorKey || d.message_key)
+        ? {
+            i18nErrorKey: (d.i18nErrorKey as string) || (d.message_key as string),
+            errorArgs: d.errorArgs || d.params,
+          }
+        : undefined,
+    );
   }
 }
+
+/** Compute delay with exponential backoff + jitter (mirrors deepseek-harness llm-retry). */
+function _retryDelay(attempt: number): number {
+  // attempt: 2 → first retry (500ms base), 1 → second retry (1000ms)
+  const base = 500;
+  const exponential = Math.min(base * 2 ** (3 - attempt), 8000);
+  const jitter = exponential * 0.3 * (Math.random() * 2 - 1);
+  return Math.max(0, exponential + jitter);
+}
+
+function _sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+

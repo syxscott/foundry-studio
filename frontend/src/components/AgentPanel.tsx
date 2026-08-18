@@ -4,6 +4,16 @@ import { useTranslation } from "react-i18next";
 import { api, ApiClientError } from "../api";
 import type { AgentPlan, LlmProviderStatus } from "../types/api";
 
+/** Animated cursor for live streaming text (matches hermes-agent style). */
+function StreamingCursor(): ReactNode {
+  return (
+    <span
+      aria-hidden
+      className="inline-block w-0.5 h-4 bg-brand-500 ml-0.5 align-[-0.1em] animate-pulse"
+    />
+  );
+}
+
 /** Lightweight inline markdown: **bold**, *italic*, `code`. No external deps. */
 function inlineMarkdown(text: string): ReactNode[] {
   const segments: ReactNode[] = [];
@@ -31,7 +41,7 @@ function inlineMarkdown(text: string): ReactNode[] {
 }
 
 /** Render multi-line text with inline markdown and line breaks. */
-function renderThinking(text: string): ReactNode {
+function renderThinking(text: string, streaming?: boolean): ReactNode {
   const lines = text.split("\n");
   return (
     <>
@@ -41,6 +51,7 @@ function renderThinking(text: string): ReactNode {
           {i < lines.length - 1 && <br />}
         </span>
       ))}
+      {streaming && <StreamingCursor />}
     </>
   );
 }
@@ -289,7 +300,7 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
             )}
           </div>
           <pre className="text-sm text-slate-700 leading-relaxed max-h-48 overflow-auto scroll-thin">
-            {renderThinking(thinking || "…")}
+            {renderThinking(thinking || "…", streaming)}
           </pre>
         </div>
       )}
