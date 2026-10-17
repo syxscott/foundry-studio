@@ -10,16 +10,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from foundry_studio import __version__
+# Import tools package to trigger ToolRegistry registration at startup.
+from foundry_studio import (
+    __version__,
+    tools,  # noqa: F401
+)
 from foundry_studio.api import routes_agent, routes_files, routes_jobs, routes_meta
 from foundry_studio.api.errors import register_exception_handlers
 from foundry_studio.config import Settings, get_settings
 from foundry_studio.db import StudioDB
 from foundry_studio.joblifecycle import JobOrchestrator
 from foundry_studio.session import SessionStore
-
-# Import tools package to trigger ToolRegistry registration at startup.
-from foundry_studio import tools  # noqa: F401
 
 logger = logging.getLogger("foundry_studio.api")
 

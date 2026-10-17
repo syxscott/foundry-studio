@@ -118,7 +118,7 @@ class MPNNEngine(BaseEngine):
             path = job_dir / filename
             # Additional check: ensure resolved path stays within job_dir
             try:
-                resolved = path.resolve().relative_to(job_dir.resolve())
+                path.resolve().relative_to(job_dir.resolve())
             except ValueError:
                 import logging
                 logger = logging.getLogger("foundry_studio.engines")

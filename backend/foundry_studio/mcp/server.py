@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
 
 from foundry_studio.mcp.handlers import handle_request
 from foundry_studio.mcp.tools import PROTOCOL_VERSION, SERVER_INFO, TOOLS

@@ -8,8 +8,9 @@ is done via httpx so this process remains independent of the web server.
 from __future__ import annotations
 
 import os
-import httpx
 from typing import Any
+
+import httpx
 
 __all__ = [
     "METHODS",

@@ -20,7 +20,12 @@ from foundry_studio.engines.registry import (
 from foundry_studio.i18n import MESSAGES
 from foundry_studio.joblifecycle import JobOrchestrator
 from foundry_studio.llm.registry import build_registry
-from foundry_studio.schemas import CheckpointInfo, HealthResponse, LlmSettingsResponse, ModelInfo
+from foundry_studio.schemas import (
+    CheckpointInfo,
+    HealthResponse,
+    LlmSettingsResponse,
+    ModelInfo,
+)
 
 router = APIRouter()
 

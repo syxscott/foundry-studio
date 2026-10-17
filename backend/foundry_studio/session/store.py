@@ -11,9 +11,8 @@ import threading
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 # Thread-local session context — ensures concurrent requests don't clobber each other.
 _CURRENT_SESSION_ID: ContextVar[str | None] = ContextVar("_current_session_id", default=None)
@@ -224,4 +223,4 @@ class SessionStore:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

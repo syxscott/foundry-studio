@@ -170,7 +170,6 @@ class SchedulerBackend(Backend):
     def submit(self, spec: JobSpec, local_job_dir: Path) -> RemoteHandle:
         local_job_dir = Path(local_job_dir)
         local_job_dir.mkdir(parents=True, exist_ok=True)
-        from foundry_studio.utils import sanitize_job_id, sanitize_shell_arg
         job_id = sanitize_job_id(spec.job_id or "")
         remote_wd = f"{self.settings.hpc_remote_workdir.rstrip('/')}/{job_id}"
         script = self._build_script(spec, remote_wd)

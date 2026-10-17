@@ -390,7 +390,7 @@ export const en: TranslationKey = {
   },
   settings: {
     title: "LLM Settings",
-    subtitle: "Configure the AI model provider. The API key is stored only in your browser (localStorage) and never sent to any third party.",
+    subtitle: "Configure the AI model provider. The API key is kept in browser localStorage and sent only to your own foundry-studio backend, which forwards it to the selected provider.",
     llm: {
       presets: "Quick Setup",
       config: "Detailed Config",
@@ -404,7 +404,7 @@ export const en: TranslationKey = {
       modelRequired: "Model name is required for this preset",
       notConfigured: "Disabled",
       apiKey: "API Key",
-      apiKeyHelp: "Stored in browser localStorage only. Never uploaded to any server.",
+      apiKeyHelp: "Kept in browser localStorage; sent in the request body to your local backend, which forwards it to the provider. The backend never logs or persists it — or leave this empty and use the backend env var (agent_llm_api_key_env) instead.",
       apiKeyPlaceholder: "sk-xxxxxxxxxxxxxxxx",
       saved: "Saved to browser!",
       backendDefaults: "Backend Default Config",
@@ -523,6 +523,8 @@ export const en: TranslationKey = {
     "error.engine_failed": "Job execution failed: {{detail}}",
     "error.fetch_outputs_failed": "Job finished, but fetching the result files failed: {{detail}}",
     "error.agent_planner_stream": "Agent planning stream failed: {{detail}}",
+    "error.agent_cannot_parse": "Could not parse the request: {{detail}}",
+    "error.validation_failed": "Validation failed: {{detail}}",
   },
   designSession: {
     title: "Design Session",

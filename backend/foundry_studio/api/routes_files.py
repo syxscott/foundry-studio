@@ -14,7 +14,6 @@ import re
 import time
 from pathlib import Path
 from threading import Thread
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import FileResponse

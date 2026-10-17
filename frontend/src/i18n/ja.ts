@@ -390,7 +390,7 @@ export const ja: TranslationKey = {
   },
   settings: {
     title: "LLM設定",
-    subtitle: "AIモデルプロバイダを設定します。API KeyはブラウザのlocalStorageにのみ保存され，第三者に送信されることはありません。",
+    subtitle: "AIモデルプロバイダを設定します。API Key はブラウザの localStorage に保存され、選択したプロバイダへ転送するあなたの foundry-studio バックエンドにのみ送信されます。",
     llm: {
       presets: "クイック設定",
       config: "詳細設定",
@@ -404,7 +404,7 @@ export const ja: TranslationKey = {
       modelRequired: "このプリセットにはモデル名が必要です",
       notConfigured: "無効",
       apiKey: "API Key",
-      apiKeyHelp: "ブラウザのlocalStorageにのみ保存されます。サーバーには送信されません。",
+      apiKeyHelp: "ブラウザの localStorage に保存され、リクエストボディでローカルバックエンドに送信されます。バックエンドは記録・永続化しません。空欄のままバックエンドの環境変数（agent_llm_api_key_env）を使うこともできます。",
       apiKeyPlaceholder: "sk-xxxxxxxxxxxxxxxx",
       saved: "ブラウザに保存しました！",
       backendDefaults: "バックエンドデフォルト設定",
@@ -523,6 +523,8 @@ export const ja: TranslationKey = {
     "error.engine_failed": "ジョブの実行に失敗しました: {{detail}}",
     "error.fetch_outputs_failed": "ジョブは完了しましたが、結果ファイルの取得に失敗しました: {{detail}}",
     "error.agent_planner_stream": "エージェントの計画ストリームが失敗しました: {{detail}}",
+    "error.agent_cannot_parse": "リクエストを解析できませんでした: {{detail}}",
+    "error.validation_failed": "バリデーションに失敗しました: {{detail}}",
   },
   designSession: {
     title: "デザインセッション",

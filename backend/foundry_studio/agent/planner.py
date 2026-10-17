@@ -97,8 +97,22 @@ class Planner:
         reg = build_registry(self.settings)
         if self._base_url_override:
             # Build an override provider with the user's base_url/model.
-            # This takes priority over the settings-backed provider.
-            if self._api_format_override == "anthropic":
+            # This takes priority over the settings-backed provider, but it
+            # must still inherit timeout/retry from settings, otherwise the
+            # override silently falls back to the 60 s / 2-retry defaults.
+            is_anthropic = (self._api_format_override or "").strip() == "anthropic"
+            if not is_anthropic:
+                # No per-request format: honour the settings-level format so an
+                # Anthropic-configured install doesn't get handed an
+                # OpenAI-compatible provider.
+                is_anthropic = (
+                    getattr(self.settings, "agent_llm_api_format", "") or ""
+                ).strip() == "anthropic"
+
+            timeout = float(getattr(self.settings, "agent_llm_timeout", 60.0) or 60.0)
+            retry = int(getattr(self.settings, "agent_llm_retry", 2) or 0)
+
+            if is_anthropic:
                 from foundry_studio.llm.providers.anthropic import AnthropicProvider
 
                 override_provider = AnthropicProvider(
@@ -106,19 +120,24 @@ class Planner:
                     base_url=self._base_url_override,
                     api_key_env="",  # empty → requires explicit api_key
                     model=self._model_override,
+                    timeout=timeout,
+                    retry=retry,
                 )
             else:
-                from foundry_studio.llm.providers.openai_compat import OpenAICompatibleProvider
+                from foundry_studio.llm.providers.openai_compat import (
+                    OpenAICompatibleProvider,
+                )
 
                 override_provider = OpenAICompatibleProvider(
                     name="override",
                     base_url=self._base_url_override,
                     api_key_env="",  # empty → requires explicit api_key
                     model=self._model_override,
+                    timeout=timeout,
+                    retry=retry,
                 )
             # Replace the default provider with the override.
-            reg._providers.clear()
-            reg.register("override", override_provider)
+            reg.replace("override", override_provider)
         return reg
 
     def _resolve_model(self) -> str | None:
@@ -157,7 +176,14 @@ class Planner:
         reg = self._registry()
         provider = reg.default_provider() if reg else None
         if provider is None:
-            yield {"type": "plan", "plan": self._plan_heuristic(text).to_dict()}
+            try:
+                plan = self._plan_heuristic(text).to_dict()
+            except ValueError as exc:
+                # No provider AND no recognisable model: still emit a terminal
+                # event so the client's `streaming` state can be cleared.
+                yield {"type": "error", "message": str(exc)}
+                return
+            yield {"type": "plan", "plan": plan}
             return
         try:
             messages = self._build_messages(text)
@@ -169,7 +195,17 @@ class Planner:
             plan = self._parse_llm_plan("".join(acc), text)
             yield {"type": "plan", "plan": plan.to_dict()}
         except Exception as exc:  # noqa: BLE001
-            result = self._plan_heuristic(text)
+            # An LLM failure falls back to the heuristic; but if the heuristic
+            # ALSO cannot parse the text, surface an explicit error event
+            # instead of raising (which would abort the SSE stream).
+            try:
+                result = self._plan_heuristic(text)
+            except ValueError as hexc:
+                yield {
+                    "type": "error",
+                    "message": f"{exc}; heuristic also failed: {hexc}",
+                }
+                return
             result.warnings.append(f"llm planner unavailable ({exc}); used heuristic")
             yield {"type": "plan", "plan": result.to_dict()}
 

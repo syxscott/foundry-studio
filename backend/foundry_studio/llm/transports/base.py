@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from foundry_studio.llm.base import StreamChunk
-    from foundry_studio.llm.types import Usage
 
 
 class ProviderTransport(ABC):
@@ -65,7 +64,7 @@ class ProviderTransport(ABC):
         model: str | None = None,
         temperature: float = 0.0,
         **opts,
-    ) -> AsyncIterator["StreamChunk"]:
+    ) -> AsyncIterator[StreamChunk]:
         """Stream chunks from the provider.
 
         Yields :class:`~foundry_studio.llm.base.StreamChunk` objects

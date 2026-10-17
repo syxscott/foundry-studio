@@ -9,7 +9,6 @@ Foundry package is installed, its ``REGISTERED_CHECKPOINTS`` take precedence
 from __future__ import annotations
 
 import hashlib
-import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -224,7 +223,6 @@ def _download_with_progress(url: str, dest: Path, progress_cb=None) -> None:
     req = urllib.request.Request(url, headers={"User-Agent": "foundry-studio/0.1"})
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
-    start = time.time()
     with urllib.request.urlopen(req, timeout=600) as resp:
         total = int(resp.headers.get("Content-Length") or 0)
         downloaded = 0

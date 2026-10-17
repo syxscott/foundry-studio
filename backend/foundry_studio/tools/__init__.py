@@ -167,7 +167,7 @@ async def _list_user_jobs(limit: int = 10, status: str | None = None) -> dict:
     # Stub — real implementation queries StudioDB
     return {
         "jobs": [],
-        "message": f"Found 0 jobs (stub — full implementation requires StudioDB access)",
+        "message": "Found 0 jobs (stub — full implementation requires StudioDB access)",
         "limit": limit,
         "status_filter": status,
     }

@@ -269,7 +269,12 @@ export const api = {
               _handleSSEEvent(value as { event?: string; data?: string }, handlers);
             }
           } catch (e) {
-            if (aborted) return;
+            if (aborted) {
+              // Aborting mid-stream rejects the pending read; still settle the
+              // caller so it doesn't remain stuck in its "streaming" state.
+              handlers.onDone?.();
+              return;
+            }
             // If stream errors (e.g. truncated), retry if we have attempts left
             if (retries > 0) {
               const delay = _retryDelay(retries);
@@ -286,6 +291,10 @@ export const api = {
         .catch((e: unknown) => {
           if (e instanceof DOMException && e.name === "AbortError") {
             cleanup();
+            // A cancelled stream must still settle the caller's state, or the
+            // caller stays stuck in "streaming" forever (and a retry that
+            // aborts first would be swallowed by its own guard).
+            handlers.onDone?.();
             return;
           }
           // Network / fetch failures: retry if attempts remain

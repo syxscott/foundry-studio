@@ -13,9 +13,15 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
 from foundry_studio.llm import LLMError
-from foundry_studio.llm.base import BackoffConfig, FinishReason, StreamChunk, normalizeApiKey, rootCauseMessage
-from foundry_studio.llm.types import Usage
+from foundry_studio.llm.base import (
+    BackoffConfig,
+    FinishReason,
+    StreamChunk,
+    normalizeApiKey,
+    rootCauseMessage,
+)
 from foundry_studio.llm.transports.base import ProviderTransport
+from foundry_studio.llm.types import Usage
 
 if TYPE_CHECKING:
     pass
@@ -137,7 +143,6 @@ class OpenAITransport(ProviderTransport):
         headers = self._headers(api_key)
         usage = Usage()
         finish = FinishReason.UNKNOWN
-        emitted_finish = False
         attempts = self.backoff.max_retries + 1
         last_err: BaseException | None = None
         last_err_code: str = LLMError.UNKNOWN
@@ -208,7 +213,6 @@ class OpenAITransport(ProviderTransport):
                 if usage.input_tokens or usage.output_tokens:
                     yield StreamChunk(type="usage", usage=usage)
                 yield StreamChunk(type="finish", finish_reason=finish or FinishReason.STOP)
-                emitted_finish = True
                 return
 
             except LLMError as exc:

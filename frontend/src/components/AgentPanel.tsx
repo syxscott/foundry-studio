@@ -68,6 +68,7 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
 export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: string) => void }) {
   const { t, i18n } = useTranslation();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const inFlightRef = useRef<AbortController | null>(null);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [thinking, setThinking] = useState("");
@@ -124,29 +125,37 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
   };
 
   const parse = () => {
-    if (!text.trim() || streaming) return;
+    if (!text.trim()) return;
+    // Re-entrant guard: a second click mid-stream is a no-op. Kept in a ref so
+    // an immediate retry() after abort() isn't rejected by a stale render.
+    if (inFlightRef.current) return;
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    inFlightRef.current = controller;
     setStreaming(true);
     setThinking("");
     setError(null);
     setErrorKey(null);
     setErrorArgs(null);
     setPlan(null);
+    const settle = () => {
+      inFlightRef.current = null;
+      setStreaming(false);
+    };
     api.streamAgentChat(text.trim(), i18n.language, {
       signal: controller.signal,
       onToken: (chunk) => setThinking((prev) => prev + chunk),
       onPlan: (p) => {
         setPlan(p);
-        setStreaming(false);
+        settle();
       },
       onError: (msg, meta) => {
         setError(msg);
         setErrorKey(meta?.i18nErrorKey ?? null);
         setErrorArgs(meta?.errorArgs ?? null);
-        setStreaming(false);
+        settle();
       },
-      onDone: () => setStreaming(false),
+      onDone: settle,
     });
   };
 
@@ -155,7 +164,10 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
   // error block surfaces a "Retry" button.
   const retry = () => {
     abortControllerRef.current?.abort();
-    void parse();
+    // Release the guard synchronously: the aborted stream settles asynchronously,
+    // and without this the retry would hit the re-entrancy check above.
+    inFlightRef.current = null;
+    parse();
   };
 
   const submit = async () => {

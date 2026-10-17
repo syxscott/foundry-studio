@@ -7,6 +7,7 @@ CIF / PDB file paths uploaded with the job (or server-side paths).
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from foundry_studio.engines.base import BaseEngine, EngineResult
@@ -90,13 +91,11 @@ class RF3Engine(BaseEngine):
         return EngineResult(outputs=outputs, summary={"model": "rf3"})
 
     def _resolve_input_paths(self, params: dict) -> list[Path]:
-        from pathlib import Path as P
-
-        paths: list[P] = []
+        paths: list[Path] = []
         warnings: list[str] = getattr(self, "_warnings", [])
         for raw in params.get("input_paths") or []:
             if isinstance(raw, str) and raw.strip():
-                p = P(raw).resolve()
+                p = Path(raw).resolve()
                 if p.exists():
                     paths.append(p)
                 else:

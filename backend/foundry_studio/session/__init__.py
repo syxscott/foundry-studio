@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from foundry_studio.session.store import SessionStore, SessionMessage
+from foundry_studio.session.store import SessionMessage, SessionStore
 
 __all__ = [
     "SessionStore",

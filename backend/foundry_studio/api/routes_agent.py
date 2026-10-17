@@ -84,12 +84,15 @@ async def _chat_sse(planner: Planner, text: str) -> AsyncIterator[str]:
             elif kind == "plan":
                 yield _sse("plan", ev.get("plan", {}))
             elif kind == "error":
+                message = ev.get("message", "error")
                 yield _sse(
                     "error",
                     {
-                        "message": ev.get("message", "error"),
-                        "i18nErrorKey": "error.agent_planner_stream",
-                        "errorArgs": {},
+                        "message": message,
+                        "i18nErrorKey": "error.agent_cannot_parse",
+                        # `{{detail}}` must be populated or the localized string
+                        # renders as an empty interpolation.
+                        "errorArgs": {"detail": message},
                     },
                 )
     except Exception as exc:  # noqa: BLE001
@@ -101,7 +104,8 @@ async def _chat_sse(planner: Planner, text: str) -> AsyncIterator[str]:
                 "errorArgs": {"detail": repr(str(exc)[:200])},
             },
         )
-        return
+        # Deliberately fall through: `done` must always terminate the stream
+        # so the client clears its "streaming" state even on failure.
     yield _sse("done", {})
 
 
@@ -132,12 +136,15 @@ async def _tool_agent_sse(agent: ToolAgent, text: str) -> AsyncIterator[str]:
             elif kind == "plan":
                 yield _sse("plan", ev.get("plan", {}))
             elif kind == "error":
+                message = ev.get("message", "error")
                 yield _sse(
                     "error",
                     {
-                        "message": ev.get("message", "error"),
-                        "i18nErrorKey": "error.agent_planner_stream",
-                        "errorArgs": {},
+                        "message": message,
+                        "i18nErrorKey": "error.agent_cannot_parse",
+                        # `{{detail}}` must be populated or the localized string
+                        # renders as an empty interpolation.
+                        "errorArgs": {"detail": message},
                     },
                 )
     except Exception as exc:  # noqa: BLE001
@@ -149,7 +156,8 @@ async def _tool_agent_sse(agent: ToolAgent, text: str) -> AsyncIterator[str]:
                 "errorArgs": {"detail": repr(str(exc)[:200])},
             },
         )
-        return
+        # Deliberately fall through: `done` must always terminate the stream
+        # so the client clears its "streaming" state even on failure.
     yield _sse("done", {})
 
 

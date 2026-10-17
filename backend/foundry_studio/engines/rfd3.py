@@ -61,7 +61,7 @@ def _build_design_json(
     json_path = job_dir / "design_spec.json"
     try:
         json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    except (OSError, IOError) as exc:
+    except OSError as exc:
         raise RuntimeError(f"Failed to write design spec: {exc}") from exc
     return json_path
 

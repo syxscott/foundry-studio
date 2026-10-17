@@ -13,9 +13,15 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
 from foundry_studio.llm import LLMError
-from foundry_studio.llm.base import BackoffConfig, FinishReason, StreamChunk, normalizeApiKey, rootCauseMessage
-from foundry_studio.llm.types import Usage
+from foundry_studio.llm.base import (
+    BackoffConfig,
+    FinishReason,
+    StreamChunk,
+    normalizeApiKey,
+    rootCauseMessage,
+)
 from foundry_studio.llm.transports.base import ProviderTransport
+from foundry_studio.llm.types import Usage
 
 if TYPE_CHECKING:
     pass

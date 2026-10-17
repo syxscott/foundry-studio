@@ -40,6 +40,8 @@ _BETA_PSI = math.radians(135.0)
 _BETA_TWIST = 2.0           # residues per turn
 
 # 3_10-helix
+# 3_10-helix reference torsion angles (documentation of the geometry modelled
+# below; the coordinate generator uses the simpler pitch/angle formulation).
 _HELIX310_PHI = math.radians(-49.0)
 _HELIX310_PSI = math.radians(-26.0)
 _HELIX310_TWIST = 3.0
@@ -221,8 +223,6 @@ def _simulate_helix_310(n_res: int, seq: str, start_idx: int = 1,
     Returns list of (resnum, one-letter, 3-letter, ca_coord, cb_coord_or_None).
     """
     atoms = []
-    phi = _HELIX310_PHI
-    psi = _HELIX310_PSI
     twist = 2 * math.pi / _HELIX310_TWIST  # 3 residues per turn
 
     rng = random.Random(42 + start_idx + 999)  # Different seed from alpha helix

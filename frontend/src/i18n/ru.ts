@@ -390,7 +390,7 @@ export const ru: TranslationKey = {
   },
   settings: {
     title: "Настройки LLM",
-    subtitle: "Настройте провайдера AI-модели. API-ключ хранится только в браузере (localStorage) и не передаётся третьим лицам.",
+    subtitle: "Настройте провайдера AI-модели. API-ключ хранится в localStorage браузера и отправляется только вашему локальному бэкенду foundry-studio, который передаёт его выбранному провайдеру.",
     llm: {
       presets: "Быстрая настройка",
       config: "Подробная настройка",
@@ -404,7 +404,7 @@ export const ru: TranslationKey = {
       modelRequired: "Для этого пресета требуется указать название модели",
       notConfigured: "Отключён",
       apiKey: "API Key",
-      apiKeyHelp: "Хранится только в localStorage браузера. Не загружается на сервер.",
+      apiKeyHelp: "Хранится в localStorage браузера и отправляется в теле запроса вашему локальному бэкенду, который передаёт его провайдеру. Бэкенд не логирует и не сохраняет его — либо оставьте поле пустым и используйте переменную окружения бэкенда (agent_llm_api_key_env).",
       apiKeyPlaceholder: "sk-xxxxxxxxxxxxxxxx",
       saved: "Сохранено в браузере!",
       backendDefaults: "Конфигурация по умолчанию",
@@ -523,6 +523,8 @@ export const ru: TranslationKey = {
     "error.engine_failed": "Не удалось выполнить задание: {{detail}}",
     "error.fetch_outputs_failed": "Задача завершена, но не удалось получить файлы результатов: {{detail}}",
     "error.agent_planner_stream": "Не удалось получить поток планирования агента: {{detail}}",
+    "error.agent_cannot_parse": "Не удалось разобрать запрос: {{detail}}",
+    "error.validation_failed": "Ошибка валидации: {{detail}}",
   },
   designSession: {
     title: "Сессия дизайна",

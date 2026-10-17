@@ -28,6 +28,16 @@ class LLMRegistry:
     def get(self, name: str) -> BaseLLMProvider | None:
         return self._providers.get(name)
 
+    def replace(self, name: str, provider: BaseLLMProvider) -> None:
+        """Install *provider* as the sole provider, named *name*.
+
+        Used by per-request overrides (the user typed their own base_url):
+        the override wins outright so no settings-backed provider can leak
+        through and send traffic to an unintended endpoint.
+        """
+        self._providers.clear()
+        self._providers[name] = provider
+
     def default_provider(self) -> BaseLLMProvider | None:
         if not self._providers:
             return None

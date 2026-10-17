@@ -7,10 +7,10 @@ format) and an async handler function.
 
 from __future__ import annotations
 
-import asyncio
-import json
-from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine
+import time
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from typing import Any
 
 __all__ = ["ToolEntry", "ToolRegistry"]
 
@@ -81,14 +81,21 @@ class ToolRegistry:
 
     @classmethod
     def _check_availability(cls, name: str) -> tuple[bool, float]:
-        """Return (available, cached_at)."""
+        """Return (available, cached_at).
+
+        Uses ``time.monotonic`` rather than the event-loop clock: this is
+        called from both async handlers and *sync* endpoints (``/capabilities``
+        runs in Starlette's threadpool, where no event loop exists), so
+        ``asyncio.get_event_loop()`` would raise ``RuntimeError`` the moment any
+        tool registered a ``check_fn``.
+        """
         tool = cls._tools.get(name)
         if not tool:
             return False, 0.0
         if not tool.check_fn:
             return True, float("inf")
 
-        now = asyncio.get_event_loop().time()
+        now = time.monotonic()
         cached_ok, cached_at = cls._check_cache.get(name, (False, 0.0))
         if now - cached_at < cls._CACHE_TTL:
             return cached_ok, cached_at

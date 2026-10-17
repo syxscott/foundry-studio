@@ -141,7 +141,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         headers = self._headers(api_key=api_key)
         usage = TokenUsage()
         finish = FinishReason.UNKNOWN
-        emitted_finish = False
         attempts = self.backoff.max_retries + 1
         last_err: BaseException | None = None
         last_err_code: str = LLMError.UNKNOWN
@@ -219,7 +218,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                 yield StreamChunk(
                     type="finish", finish_reason=finish or FinishReason.STOP
                 )
-                emitted_finish = True
                 return
             except LLMError as exc:
                 # Retryable + attempts left → back off and retry.
@@ -260,12 +258,6 @@ class OpenAICompatibleProvider(BaseLLMProvider):
                     f"{self.name} request failed: {rootCauseMessage(exc)}",
                     cause=exc,
                 ) from exc
-            finally:
-                # If the inner block returns without ever emitting a finish
-                # chunk (e.g. a provider that doesn't send a final frame),
-                # `emitted_finish` ensures we only emit once.  The function
-                # returns explicitly above, so this is a no-op in practice.
-                _ = emitted_finish
         # Loop exhausted: emit the most recent error with its root cause.
         if last_err is None:
             raise LLMError(

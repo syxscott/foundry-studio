@@ -84,11 +84,24 @@ class ToolAgent:
             yield {"type": "error", "message": f"no transport for api_mode: {api_mode}"}
             return
 
-        transport = self._build_transport(transport_cls)
+        try:
+            transport = self._build_transport(transport_cls)
+        except LLMError as exc:
+            # No usable provider (e.g. agent_llm_provider="" and no
+            # per-request base_url). Emit a terminal error instead of letting
+            # the exception escape the generator.
+            yield {"type": "error", "message": exc.message}
+            return
 
         iteration = 0
         while iteration < self.max_tool_calls:
             iteration += 1
+
+            # Tool calls collected *for this turn only*. Keeping this scoped to
+            # the iteration is what terminates the loop: a turn that returns
+            # text instead of a tool_call must break out, rather than re-running
+            # the previous turn's call forever until max_tool_calls.
+            turn_tool_calls: list[dict] = []
 
             # Stream from the transport; tools only on the first turn
             tools_this_turn = self.tools if iteration == 1 else None
@@ -117,7 +130,9 @@ class ToolAgent:
                     except json.JSONDecodeError:
                         args = {}
 
-                    tool_calls.append({"id": tc_id, "name": tc_name, "arguments": args})
+                    turn_tool_calls.append(
+                        {"id": tc_id, "name": tc_name, "arguments": args}
+                    )
                     yield {
                         "type": "tool-call",
                         "toolCallId": tc_id,
@@ -128,9 +143,10 @@ class ToolAgent:
                 elif chunk.type == "finish":
                     break
 
-            # If no tool calls this turn, we're done
-            if not tool_calls:
+            # No tool calls this turn: the model produced the final answer.
+            if not turn_tool_calls:
                 break
+            tool_calls = turn_tool_calls
 
             # Execute the most recent tool call
             last_tc = tool_calls[-1]
@@ -222,22 +238,36 @@ class ToolAgent:
 
     def _resolve_api_mode(self) -> str:
         fmt = (self.api_format or "").strip()
+        if not fmt and self.settings is not None:
+            fmt = (getattr(self.settings, "agent_llm_api_format", "") or "").strip()
         if fmt == "anthropic":
             return "anthropic_messages"
         return "chat_completions"
 
     def _build_transport(self, transport_cls):
+        """Build the transport for this request.
+
+        Per-request overrides win over settings: a user-supplied ``base_url``
+        must actually reach the wire (otherwise the agent silently calls the
+        settings-configured provider instead — e.g. real OpenAI while the user
+        thinks they are pointing at a local gateway).
+        """
         reg = build_registry(self.settings)
         provider = reg.default_provider()
         if provider is None:
             raise LLMError(LLMError.MISSING_CREDENTIAL, "no LLM provider")
+
+        base_url = (self.base_url or "").strip() or provider.base_url
+        api_key_env = "" if (self.base_url or "").strip() else getattr(provider, "api_key_env", "")
+        model = self.model_override or provider.model
+
         return transport_cls(
-            name=provider.name,
-            base_url=provider.base_url,
-            api_key_env=getattr(provider, "api_key_env", ""),
-            model=self.model_override or provider.model,
-            timeout=provider.timeout,
-            retry=provider.retry,
+            name="override" if (self.base_url or "").strip() else provider.name,
+            base_url=base_url,
+            api_key_env=api_key_env,
+            model=model,
+            timeout=getattr(provider, "timeout", 60.0),
+            retry=getattr(provider, "retry", 2),
         )
 
     async def _execute_tool(self, name: str, arguments: dict) -> dict:

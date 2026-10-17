@@ -30,6 +30,7 @@ from foundry_studio.hpc.base import (
     STATUS_CANCELED,
     STATUS_FAILED,
     STATUS_PENDING,
+    STATUS_RUNNING,
     STATUS_SUCCEEDED,
     Backend,
     HPCNotConfigured,

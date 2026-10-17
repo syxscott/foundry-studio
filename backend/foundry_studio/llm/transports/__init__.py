@@ -6,6 +6,8 @@ import importlib
 import pkgutil
 from pathlib import Path
 
+from foundry_studio.llm.transports.base import ProviderTransport
+
 _TRANSPORTS: dict[str, type] = {}
 
 
@@ -33,8 +35,6 @@ def _ensure_discovered() -> None:
 
 # Auto-discover transports on first import
 _ensure_discovered()
-
-from foundry_studio.llm.transports.base import ProviderTransport
 
 __all__ = [
     "ProviderTransport",

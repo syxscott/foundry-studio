@@ -387,7 +387,7 @@ export const zh = {
   },
   settings: {
     title: "LLM 设置",
-    subtitle: "配置大模型供应商。API Key 仅保存在浏览器本地（localStorage），不传输到任何第三方。",
+    subtitle: "配置大模型供应商。API Key 保存在浏览器本地（localStorage），仅随请求发送给你自己的 foundry-studio 后端，由其转发至所选供应商。",
     llm: {
       presets: "快速配置",
       config: "详细配置",
@@ -401,7 +401,7 @@ export const zh = {
       modelRequired: "该预设需要填写模型名称",
       notConfigured: "未启用",
       apiKey: "API Key",
-      apiKeyHelp: "保存在浏览器本地存储（localStorage）中，不上传到服务器。",
+      apiKeyHelp: "保存在浏览器 localStorage 中；调用模型时会随请求体发送到本机后端转发给供应商。后端不会记录或持久化该值，也可改用后端环境变量（agent_llm_api_key_env）而不填写此处。",
       apiKeyPlaceholder: "sk-xxxxxxxxxxxxxxxx",
       saved: "已保存到浏览器！",
       backendDefaults: "后端默认配置",
@@ -520,6 +520,8 @@ export const zh = {
     "error.engine_failed": "任务执行失败：{{detail}}",
     "error.fetch_outputs_failed": "任务已完成，但下载结果文件失败：{{detail}}",
     "error.agent_planner_stream": "Agent 流式规划失败：{{detail}}",
+    "error.agent_cannot_parse": "无法解析该请求：{{detail}}",
+    "error.validation_failed": "参数验证失败：{{detail}}",
   },
   designSession: {
     title: "设计会话",
