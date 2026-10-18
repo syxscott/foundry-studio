@@ -118,7 +118,11 @@ export default function AgentPanel({ onSubmitted }: { onSubmitted: (jobId: strin
       // i18next's TFunction expects string|number|boolean args; server-side
       // errorArgs is `Record<string, unknown>`, so we narrow with a cast.
       const args = (errorArgs ?? {}) as Record<string, string | number | boolean>;
-      const template = t(`errors.${errorKey}` as never, args);
+      // The catalog stores error strings as FLAT keys inside the `errors`
+      // block (errors["error.model_not_found"]), so the full i18next path is
+      // `errors.` + the server-supplied key. Do NOT strip or re-prefix it.
+      const key = `errors.${errorKey}` as never;
+      const template = t(key, args);
       if (template && template !== `errors.${errorKey}`) return template as string;
     }
     return error ?? "";

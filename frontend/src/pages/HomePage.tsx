@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api } from "../api";
 import AgentPanel from "../components/AgentPanel";
 import BackendStatus from "../components/BackendStatus";
+import { usePolling } from "../hooks/usePolling";
 import ManualJobForm from "../components/ManualJobForm";
 import { StatusBadge } from "../components/StatusBadge";
 import type { BackendInfo, HealthResponse, Job } from "../types/api";
@@ -11,23 +12,17 @@ import type { BackendInfo, HealthResponse, Job } from "../types/api";
 function RecentExperiments({ onOpen }: { onOpen: (id: string) => void }) {
   const { t } = useTranslation();
   const [jobs, setJobs] = useState<Job[] | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      api
-        .listJobs()
-        .then((r) => alive && setJobs(r.items.slice(0, 6)))
-        .catch(() => alive && setJobs([]));
-    };
-    load();
-    // 5 s is short enough that a "running" job moves visibly and long
-    // enough that 6 small JSON responses are negligible.
-    const id = setInterval(load, 5000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
+  // 5 s is short enough that a "running" job moves visibly and long enough
+  // that 6 small JSON responses are negligible. `usePolling` runs once
+  // immediately, then repeats after each call settles.
+  const loadRecent = useCallback(async () => {
+    try {
+      setJobs((await api.listJobs()).items.slice(0, 6));
+    } catch {
+      setJobs([]);
+    }
   }, []);
+  usePolling(loadRecent, 5000);
   if (!jobs) return <div className="card p-5 text-center text-slate-400"><span className="spinner text-brand-500" /></div>;
   if (jobs.length === 0) {
     return (

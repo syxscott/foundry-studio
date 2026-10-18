@@ -23,12 +23,16 @@ import { CandidateComparison } from "../components/CandidateComparison";
 import { StructureViewer } from "../components/StructureViewer";
 import { StatusBadge } from "../components/StatusBadge";
 import { toast } from "../components/Toaster";
+import { usePolling } from "../hooks/usePolling";
 import type {
   CandidateFilter,
   DesignCandidate,
   DesignRound,
 } from "../types/session";
 import type { AgentPlan, JobStatus } from "../types/api";
+
+/** Cadence for refreshing candidate job statuses within a session. */
+const SESSION_POLL_MS = 5000;
 
 interface DesignSessionPageProps {
   /** Session ID from URL params (null for new session) */
@@ -381,60 +385,61 @@ function DesignSessionPageContent({ sessionId }: DesignSessionPageProps) {
     }
   }, [sessions, sessionId, session, createSession, setActiveSession, t]);
 
-  // Poll for job statuses
-  useEffect(() => {
+  // Poll job statuses for every candidate in the session. `usePolling` already
+  // guarantees the next tick waits for this one to settle (the old code needed
+  // an explicit `inFlight` flag for that), and all jobs are fetched in parallel.
+  const pollJobStatuses = useCallback(async () => {
     if (!session) return;
+    // Recompute each tick so newly submitted candidates are picked up.
+    const candidateJobIds = session.rounds
+      .flatMap((r) => r.candidates)
+      .filter((c) => c.jobId)
+      .map((c) => c.jobId!);
 
-    const pollInterval = setInterval(async () => {
-      // Recompute inside the interval so we always poll the latest rounds.
-      const candidateJobIds = session.rounds
-        .flatMap((r) => r.candidates)
-        .filter((c) => c.jobId)
-        .map((c) => c.jobId!);
+    if (candidateJobIds.length === 0) return;
 
-      if (candidateJobIds.length === 0) return;
+    // Concurrent fetch: a serial loop made each poll cost the SUM of every
+    // request instead of the slowest one.
+    const jobs = await Promise.all(
+      candidateJobIds.map((id) =>
+        api.getJob(id).catch(() => null), // job may no longer exist
+      ),
+    );
 
-      const newStatuses = new Map<string, JobStatus>();
-      for (const jobId of candidateJobIds) {
-        try {
-          const job = await api.getJob(jobId);
-          newStatuses.set(jobId, job.status);
+    const newStatuses = new Map<string, JobStatus>();
+    jobs.forEach((job, idx) => {
+      if (!job) return;
+      const jobId = candidateJobIds[idx];
+      newStatuses.set(jobId, job.status);
 
-          // Update candidate structure URL if job succeeded
-          if (
-            job.status === "succeeded" &&
-            job.outputs.length > 0 &&
-            !session.rounds
-              .flatMap((r) => r.candidates)
-              .find((c) => c.jobId === jobId)?.structureUrl
-          ) {
-            const structureOutput = job.outputs.find(
-              (o) => o.kind === "structure" || o.name.endsWith(".cif"),
-            );
-            if (structureOutput) {
-              // Find and update the candidate
-              for (const round of session.rounds) {
-                const candidate = round.candidates.find(
-                  (c) => c.jobId === jobId,
-                );
-                if (candidate) {
-                  updateCandidate(session.id, round.id, candidate.id, {
-                    structureUrl: structureOutput.url,
-                  });
-                  break;
-                }
-              }
+      // Promote the structure URL once the job succeeds.
+      if (
+        job.status === "succeeded" &&
+        job.outputs.length > 0 &&
+        !session.rounds
+          .flatMap((r) => r.candidates)
+          .find((c) => c.jobId === jobId)?.structureUrl
+      ) {
+        const structureOutput = job.outputs.find(
+          (o) => o.kind === "structure" || o.name.endsWith(".cif"),
+        );
+        if (structureOutput) {
+          for (const round of session.rounds) {
+            const candidate = round.candidates.find((c) => c.jobId === jobId);
+            if (candidate) {
+              updateCandidate(session.id, round.id, candidate.id, {
+                structureUrl: structureOutput.url,
+              });
+              break;
             }
           }
-        } catch {
-          // Job might not exist anymore
         }
       }
-      setJobStatuses(newStatuses);
-    }, 5000);
-
-    return () => clearInterval(pollInterval);
+    });
+    setJobStatuses(newStatuses);
   }, [session, updateCandidate]);
+
+  usePolling(pollJobStatuses, SESSION_POLL_MS, session !== null);
 
   /** Handle sending a message to the AI */
   const handleSendMessage = useCallback(

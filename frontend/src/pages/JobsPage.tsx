@@ -5,9 +5,13 @@ import { api, ApiClientError } from "../api";
 import { StatusBadge } from "../components/StatusBadge";
 import { ProgressBar } from "../components/ProgressBar";
 import { toast } from "../components/Toaster";
+import { usePolling } from "../hooks/usePolling";
 import type { Job, JobStatus } from "../types/api";
 
 const POLL_MS = 3000;
+// Back-off interval used when every listed job is in a terminal state.
+const POLL_IDLE_MS = 15000;
+const ACTIVE_STATUSES: ReadonlySet<string> = new Set(["queued", "running"]);
 
 export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
   const { t } = useTranslation();
@@ -18,12 +22,16 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
   // when it transitions to a terminal state.
   const lastStatusRef = useRef<Map<string, JobStatus>>(new Map());
   const firstLoadRef = useRef(true);
+  // Read by the poll scheduler to decide fast vs. back-off cadence.
+  const hasActiveRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
       const res = await api.listJobs(filter === "all" ? undefined : filter);
       setJobs(res.items);
       setError(null);
+      // Feed the poll scheduler: fast cadence while work is in flight.
+      hasActiveRef.current = res.items.some((j) => ACTIVE_STATUSES.has(j.status));
 
       // Fire a toast when a job we saw in a previous poll moves to succeeded /
       // failed / canceled. We skip the very first load to avoid replaying
@@ -63,10 +71,15 @@ export function JobsPage({ onOpen }: { onOpen: (id: string) => void }) {
   useEffect(() => {
     firstLoadRef.current = true;
     lastStatusRef.current.clear();
-    void load();
-    const id = setInterval(() => void load(), POLL_MS);
-    return () => clearInterval(id);
-  }, [load]);
+  }, [filter]);
+
+  // Adaptive polling: 3 s while something is actually running, backing off to
+  // 15 s once the list is all terminal. Before this the page hit the API
+  // every 3 s forever even when nothing could change.
+  usePolling(
+    load,
+    useCallback(() => (hasActiveRef.current ? POLL_MS : POLL_IDLE_MS), []),
+  );
 
   const handleDelete = async (job: Job) => {
     if (!window.confirm(t("jobs.confirmDelete", { name: job.name }))) return;

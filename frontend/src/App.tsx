@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api } from "./api";
@@ -6,15 +6,42 @@ import BackendStatus from "./components/BackendStatus";
 import { SimulationBanner } from "./components/SimulationBanner";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { Toaster } from "./components/Toaster";
+import { usePolling } from "./hooks/usePolling";
 import type { HealthResponse } from "./types/api";
-import {
-  EnvironmentPage,
-  HomePage,
-  JobDetailPage,
-  JobsPage,
-  DesignSessionPage,
-  SettingsPage,
-} from "./pages";
+import { HomePage } from "./pages";
+
+/** Header badge refresh cadence. */
+const HEALTH_POLL_MS = 15000;
+
+// Only the landing page ships in the entry chunk (fast first paint). The rest
+// are code-split: SettingsPage alone is ~865 lines plus its provider preset
+// table, and DesignSessionPage pulls in the candidate/structure comparison UI.
+// Each becomes its own chunk, fetched the first time the route is opened.
+const JobsPage = lazy(() =>
+  import("./pages/JobsPage").then((m) => ({ default: m.JobsPage })),
+);
+const JobDetailPage = lazy(() =>
+  import("./pages/JobDetailPage").then((m) => ({ default: m.JobDetailPage })),
+);
+const EnvironmentPage = lazy(() =>
+  import("./pages/EnvironmentPage").then((m) => ({ default: m.EnvironmentPage })),
+);
+const DesignSessionPage = lazy(() =>
+  import("./pages/DesignSessionPage").then((m) => ({ default: m.DesignSessionPage })),
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
+
+/** Shown while a lazily-loaded route chunk is in flight. */
+function PageFallback() {
+  return (
+    <div className="card p-8 flex items-center justify-center gap-3 text-sm text-slate-400">
+      <span className="spinner text-brand-500" />
+      <span>…</span>
+    </div>
+  );
+}
 
 type Route =
   | { name: "home" }
@@ -78,21 +105,16 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      api
-        .health()
-        .then((h) => alive && setHealth(h))
-        .catch(() => alive && setHealth(null));
-    };
-    load();
-    const id = setInterval(load, 15000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
+  const loadHealth = useCallback(async () => {
+    try {
+      setHealth(await api.health());
+    } catch {
+      setHealth(null);
+    }
   }, []);
+  // Health drives the header badges; 15 s is fine and never overlaps because
+  // `usePolling` waits for each call to settle before scheduling the next.
+  usePolling(loadHealth, HEALTH_POLL_MS);
 
   const navigate = (r: Route) => {
     if (r.name === "home") window.location.hash = "#/";
@@ -148,16 +170,18 @@ export default function App() {
       <SimulationBanner health={health} />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 animate-fade-in">
-        {route.name === "home" && <HomePage health={health} onOpenJob={(id) => navigate({ name: "job", id })} />}
-        {route.name === "jobs" && <JobsPage onOpen={(id) => navigate({ name: "job", id })} />}
-        {route.name === "job" && (
-          <JobDetailPage jobId={route.id} onBack={() => navigate({ name: "jobs" })} />
-        )}
-        {route.name === "environment" && <EnvironmentPage />}
-        {route.name === "settings" && <SettingsPage />}
-        {route.name === "design" && (
-          <DesignSessionPage sessionId={route.id ?? null} />
-        )}
+        <Suspense fallback={<PageFallback />}>
+          {route.name === "home" && <HomePage health={health} onOpenJob={(id) => navigate({ name: "job", id })} />}
+          {route.name === "jobs" && <JobsPage onOpen={(id) => navigate({ name: "job", id })} />}
+          {route.name === "job" && (
+            <JobDetailPage jobId={route.id} onBack={() => navigate({ name: "jobs" })} />
+          )}
+          {route.name === "environment" && <EnvironmentPage />}
+          {route.name === "settings" && <SettingsPage />}
+          {route.name === "design" && (
+            <DesignSessionPage sessionId={route.id ?? null} />
+          )}
+        </Suspense>
       </main>
 
       <footer className="border-t border-surface-border py-5 text-center text-xs text-slate-400 bg-white/60">

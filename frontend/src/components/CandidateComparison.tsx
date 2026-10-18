@@ -9,7 +9,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import * as NGL from "ngl";
+import type * as NGLTypes from "ngl";
+
+import { loadNgl } from "./ngl";
 
 import { StatusBadge } from "./StatusBadge";
 import type { DesignCandidate } from "../types/session";
@@ -67,7 +69,7 @@ function StructureViewerPanel({
 }) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<NGL.Stage | null>(null);
+  const stageRef = useRef<NGLTypes.Stage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rep, setRep] = useState<Representation>("cartoon");
@@ -75,21 +77,38 @@ function StructureViewerPanel({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const stage = new NGL.Stage(containerRef.current, {
-      backgroundColor: "#f8fafc",
-    });
-    stageRef.current = stage;
+    // NGL is loaded on demand (see ./ngl.ts) so it stays out of the entry chunk.
+    let disposed = false;
+    let stage: NGLTypes.Stage | null = null;
 
-    const ext = url.split(".").pop()?.toLowerCase() || "cif";
-    stage
-      .loadFile(url, { ext })
-      .then((component) => {
-        const structure = component as NGL.StructureComponent;
-        structure.autoView();
-        structure.addRepresentation("cartoon", { colorScheme: "chainid" });
-        setLoading(false);
+    loadNgl()
+      .then((NGL) => {
+        if (disposed || !containerRef.current) return;
+        stage = new NGL.Stage(containerRef.current, {
+          backgroundColor: "#f8fafc",
+        });
+        stageRef.current = stage;
+
+        const ext = url.split(".").pop()?.toLowerCase() || "cif";
+        stage
+          .loadFile(url, { ext })
+          .then((component) => {
+            if (disposed) return;
+            const structure = component as NGLTypes.StructureComponent;
+            structure.autoView();
+            structure.addRepresentation("cartoon", { colorScheme: "chainid" });
+            setLoading(false);
+          })
+          .catch((e: unknown) => {
+            if (disposed) return;
+            const msg = e instanceof Error ? e.message : String(e);
+            setError(msg);
+            setLoading(false);
+            onLoadError?.(msg);
+          });
       })
       .catch((e: unknown) => {
+        if (disposed) return;
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
         setLoading(false);
@@ -97,7 +116,8 @@ function StructureViewerPanel({
       });
 
     return () => {
-      stage.dispose();
+      disposed = true;
+      stage?.dispose();
       stageRef.current = null;
     };
   }, [url, onLoadError]);
@@ -108,8 +128,8 @@ function StructureViewerPanel({
       const stage = stageRef.current;
       if (!stage) return;
       stage.eachComponent((comp) => {
-        (comp as NGL.StructureComponent).removeAllRepresentations();
-        (comp as NGL.StructureComponent).addRepresentation(newRep, {
+        (comp as NGLTypes.StructureComponent).removeAllRepresentations();
+        (comp as NGLTypes.StructureComponent).addRepresentation(newRep, {
           colorScheme: "chainid",
         });
       });
@@ -119,7 +139,7 @@ function StructureViewerPanel({
 
   const resetView = useCallback(() => {
     stageRef.current?.eachComponent((comp) => {
-      (comp as NGL.StructureComponent).autoView();
+      (comp as NGLTypes.StructureComponent).autoView();
     });
     stageRef.current?.viewer.requestRender();
   }, []);

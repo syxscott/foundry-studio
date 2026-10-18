@@ -6,6 +6,7 @@ import { toast } from "../components/Toaster";
 import { ProgressBar } from "../components/ProgressBar";
 import { StatusBadge } from "../components/StatusBadge";
 import { StructureViewer } from "../components/StructureViewer";
+import { usePolling } from "../hooks/usePolling";
 import type { Job } from "../types/api";
 
 const POLL_MS = 2000;
@@ -54,10 +55,11 @@ export function JobDetailPage({
     setNotFound(false);
     setActionError(null);
     lastLogLenRef.current = 0;
-    void load();
-    const id = setInterval(() => void load(), POLL_MS);
-    return () => clearInterval(id);
-  }, [load]);
+  }, [jobId]);
+
+  // `usePolling` schedules the next tick only after this one settles, so a
+  // stalled backend can't pile up duplicate /api/jobs/<id> + /logs pairs.
+  usePolling(load, POLL_MS);
 
   // Auto-scroll the log panel to bottom whenever the content changes.
   // We compare new vs old length so the effect fires both on growth and on

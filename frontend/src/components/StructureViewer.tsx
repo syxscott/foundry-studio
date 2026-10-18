@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import * as NGL from "ngl";
+import type * as NGLTypes from "ngl";
 
 import { toast } from "./Toaster";
+import { loadNgl } from "./ngl";
 
 type Representation =
   | "cartoon"
@@ -33,8 +34,8 @@ export function StructureViewer({
 }) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<NGL.Stage | null>(null);
-  const componentRef = useRef<NGL.StructureComponent | null>(null);
+  const stageRef = useRef<NGLTypes.Stage | null>(null);
+  const componentRef = useRef<NGLTypes.StructureComponent | null>(null);
   const [rep, setRep] = useState<Representation>("cartoon");
   const [color, setColor] = useState<ColorScheme>("chainid");
   const [error, setError] = useState<string | null>(null);
@@ -45,31 +46,47 @@ export function StructureViewer({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const stage = new NGL.Stage(containerRef.current, {
-      backgroundColor: "#ffffff",
-    });
-    stageRef.current = stage;
+    // NGL is loaded on demand (see ./ngl.ts) so it stays out of the entry chunk.
+    let disposed = false;
+    let stage: NGLTypes.Stage | null = null;
 
-    stage
-      .loadFile(url, { ext: "cif" })
-      .then((component) => {
-        const structure = component as NGL.StructureComponent;
-        componentRef.current = structure;
-        structure.autoView();
-        addRepresentation(structure, "cartoon", "chainid");
-        setLoading(false);
+    loadNgl()
+      .then((NGL) => {
+        if (disposed || !containerRef.current) return;
+        stage = new NGL.Stage(containerRef.current, {
+          backgroundColor: "#ffffff",
+        });
+        stageRef.current = stage;
+
+        stage
+          .loadFile(url, { ext: "cif" })
+          .then((component) => {
+            if (disposed) return;
+            const structure = component as NGLTypes.StructureComponent;
+            componentRef.current = structure;
+            structure.autoView();
+            addRepresentation(structure, "cartoon", "chainid");
+            setLoading(false);
+          })
+          .catch((e: unknown) => {
+            if (disposed) return;
+            setError(e instanceof Error ? e.message : String(e));
+            setLoading(false);
+          });
       })
       .catch((e: unknown) => {
+        if (disposed) return;
         setError(e instanceof Error ? e.message : String(e));
         setLoading(false);
       });
 
     return () => {
+      disposed = true;
       if (spinHandleRef.current) {
         spinHandleRef.current.stop();
         spinHandleRef.current = null;
       }
-      stage.dispose();
+      stage?.dispose();
       stageRef.current = null;
       componentRef.current = null;
     };
@@ -105,7 +122,7 @@ export function StructureViewer({
   }, [autoSpin]);
 
   const addRepresentation = (
-    component: NGL.StructureComponent,
+    component: NGLTypes.StructureComponent,
     repType: Representation,
     colorScheme: ColorScheme,
   ) => {
